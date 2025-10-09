@@ -2,23 +2,249 @@
 <html lang="en" dir="ltr" class="hydrated">
   <head>
     <meta charset="UTF-8" />
-    <title>Example Capacitor App</title>
+    <title>AdMob Plugin Demo</title>
     <meta
       name="viewport"
       content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="format-detection" content="telephone=no" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #f5f5f5;
+        color: #1f1f1f;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #111;
+          color: #f5f5f5;
+        }
+        .card {
+          background: #1c1c1c;
+          box-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+        }
+      }
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 1.9rem;
+      }
+      h2 {
+        margin: 0 0 16px;
+        font-size: 1.2rem;
+      }
+      p {
+        margin: 0;
+        line-height: 1.45;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+      }
+      label {
+        font-weight: 600;
+        margin-bottom: 6px;
+        display: block;
+      }
+      input,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(60, 60, 60, 0.25);
+        background: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: #2563eb;
+        color: white;
+      }
+      button.secondary {
+        background: transparent;
+        border: 1px solid rgba(60, 60, 60, 0.35);
+        color: inherit;
+      }
+      button + button {
+        margin-left: 8px;
+      }
+      button[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .controls-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .field-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+      pre.log {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+        background: rgba(17, 24, 39, 0.9);
+        color: #d1d5db;
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 160px;
+        max-height: 320px;
+        overflow-y: auto;
+        margin: 12px 0 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    </style>
   </head>
   <body>
     <main>
-      <h1>Capacitor Test Plugin Project</h1>
-      <p>
-        This project can be used to test out the functionality of your plugin. Nothing in the
-        <em>example-app/</em> folder will be published to npm when using this template, so you can create away!
-      </p>
-      <label for="echoInput">Echo Text:</label>
-      <input type="text" id="echoInput" name="echoInput" value="Hello World!" />
-      <button onclick="testEcho()">Click Me!</button>
+      <header>
+        <h1>@capgo/capacitor-admob</h1>
+        <p>
+          Trigger real ad lifecycle events with Google test ad unit IDs. Run this app on a device or emulator with the
+          Google Mobile Ads SDK installed to see the full behaviour.
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>1. SDK Setup</h2>
+        <div class="controls-row">
+          <button id="startButton">Start AdMob</button>
+          <button id="configureButton" class="secondary">Apply App Config</button>
+          <button id="requestConfigButton" class="secondary">Apply Request Config</button>
+        </div>
+        <div class="field-grid">
+          <div>
+            <label for="appVolume">App Volume (0 - 1)</label>
+            <input id="appVolume" type="number" value="0.5" min="0" max="1" step="0.1" />
+          </div>
+          <div>
+            <label for="contentRating">Max Ad Content Rating</label>
+            <select id="contentRating">
+              <option value="">Unspecified</option>
+              <option value="G">G</option>
+              <option value="PG">PG</option>
+              <option value="T">T</option>
+              <option value="MA">MA</option>
+            </select>
+          </div>
+          <div>
+            <label for="testDeviceId">Test Device IDs (comma separated)</label>
+            <input id="testDeviceId" placeholder="0123456789ABCDEF0123456789ABCDEF" />
+          </div>
+        </div>
+        <div class="controls-row">
+          <label class="inline" for="appMuted">
+            <input id="appMuted" type="checkbox" />
+            App Muted
+          </label>
+          <label class="inline" for="sameAppKey">
+            <input id="sameAppKey" type="checkbox" />
+            Same App Key
+          </label>
+          <label class="inline" for="childDirected">
+            <input id="childDirected" type="checkbox" />
+            Child Directed
+          </label>
+          <label class="inline" for="underAge">
+            <input id="underAge" type="checkbox" />
+            Under Age of Consent
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Banner Ad</h2>
+        <div class="field-grid">
+          <div>
+            <label for="bannerUnitId">Banner Unit ID</label>
+            <input id="bannerUnitId" value="ca-app-pub-3940256099942544/6300978111" />
+          </div>
+          <div>
+            <label for="bannerPosition">Position</label>
+            <select id="bannerPosition">
+              <option value="bottom" selected>Bottom</option>
+              <option value="top">Top</option>
+            </select>
+          </div>
+        </div>
+        <div class="controls-row">
+          <button id="bannerLoadButton">Load Banner</button>
+          <button id="bannerShowButton">Show Banner</button>
+          <button id="bannerHideButton" class="secondary">Hide Banner</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Interstitial Ad</h2>
+        <div class="field-grid">
+          <div>
+            <label for="interstitialUnitId">Interstitial Unit ID</label>
+            <input id="interstitialUnitId" value="ca-app-pub-3940256099942544/1033173712" />
+          </div>
+        </div>
+        <div class="controls-row">
+          <button id="interstitialLoadButton">Load Interstitial</button>
+          <button id="interstitialShowButton">Show Interstitial</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>4. Rewarded Ad</h2>
+        <div class="field-grid">
+          <div>
+            <label for="rewardedUnitId">Rewarded Unit ID</label>
+            <input id="rewardedUnitId" value="ca-app-pub-3940256099942544/5224354917" />
+          </div>
+        </div>
+        <div class="controls-row">
+          <button id="rewardedLoadButton">Load Rewarded</button>
+          <button id="rewardedShowButton">Show Rewarded</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>5. Privacy & Diagnostics</h2>
+        <div class="controls-row">
+          <button id="trackingStatusButton" class="secondary">Tracking Status</button>
+          <button id="requestTrackingButton" class="secondary">Request Tracking Authorization</button>
+          <button id="removeListenersButton" class="secondary">Remove All Listeners</button>
+        </div>
+        <p>
+          Listener events from native SDKs will appear in the log. On web builds the plugin falls back to console logs
+          so you can still verify the call order.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>6. Event Log</h2>
+        <div class="controls-row">
+          <button id="clearLogButton" class="secondary">Clear Log</button>
+        </div>
+        <pre id="logOutput" class="log">Logs will appear here.</pre>
+      </section>
     </main>
 
     <script src="./js/example.js" type="module"></script>
