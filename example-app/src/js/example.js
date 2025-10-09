@@ -1,6 +1,6 @@
-import { AdmobPlus } from '@capgo/admob-plus';
+import { AdMob } from '@capgo/capacitor-admob';
 
 window.testEcho = () => {
     const inputValue = document.getElementById("echoInput").value;
-    AdmobPlus.echo({ value: inputValue })
+    AdMob.echo({ value: inputValue })
 }

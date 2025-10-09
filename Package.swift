@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "CapgoAdmobPlus",
+    name: "CapgoCapacitorAdmob",
     platforms: [.iOS(.v14)],
     products: [
         .library(
-            name: "CapgoAdmobPlus",
+            name: "CapgoCapacitorAdmob",
             targets: ["AdmobPlusPlugin"])
     ],
     dependencies: [

@@ -1,4 +1,4 @@
-# @capgo/admob-plus
+# @capgo/capacitor-admob
  <a href="https://capgo.app/"><img src='https://raw.githubusercontent.com/Cap-go/capgo/main/assets/capgo_banner.png' alt='Capgo - Instant updates for capacitor'/></a>
 
 <div align="center">
@@ -10,7 +10,7 @@ AdMob SDK bridge for Capacitor apps
 ## Install
 
 ```bash
-npm install @capgo/admob-plus
+npm install @capgo/capacitor-admob
 npx cap sync
 ```
 

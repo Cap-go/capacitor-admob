@@ -2,5 +2,5 @@
 include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
-include ':capgo-admob-plus'
-project(':capgo-admob-plus').projectDir = new File('../../android')
+include ':capacitor-admob'
+project(':capacitor-admob').projectDir = new File('../../android')
