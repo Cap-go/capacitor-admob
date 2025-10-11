@@ -1,6 +1,6 @@
 {
   "appId": "app.capgo.admob",
-  "appName": "AdMob Example",
+  "appName": "Admob Example",
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {

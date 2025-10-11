@@ -1,4 +1,4 @@
-package com.example.plugin;
+package app.capgo.admob;
 
 import com.getcapacitor.BridgeActivity;
 
