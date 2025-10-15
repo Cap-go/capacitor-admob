@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.0.6](https://github.com/Cap-go/capacitor-admob/compare/7.0.5...7.0.6) (2025-10-15)
+
+
+### Bug Fixes
+
+* lock ([957aa2e](https://github.com/Cap-go/capacitor-admob/commit/957aa2ed2537e61d3a857fd4dba4d2ca1a158724))
+
 ## [7.0.5](https://github.com/Cap-go/capacitor-admob/compare/7.0.4...7.0.5) (2025-10-15)
 
 
