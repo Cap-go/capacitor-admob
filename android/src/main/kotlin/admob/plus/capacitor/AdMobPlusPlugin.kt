@@ -19,6 +19,7 @@ import org.json.JSONObject
 
 @CapacitorPlugin(name = "AdMobPlus")
 class AdMobPlusPlugin : Plugin(), Helper.Adapter {
+    private val PLUGIN_VERSION = "7.1.2"
     private var helper: Helper? = null
     override fun load() {
         super.load()
@@ -142,6 +143,17 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             emit(eventName, JSObject.fromJSONObject(JSONObject(data)))
         } catch (e: JSONException) {
             e.printStackTrace()
+        }
+    }
+
+    @PluginMethod
+    fun getPluginVersion(call: PluginCall) {
+        try {
+            val ret = JSObject()
+            ret.put("version", PLUGIN_VERSION)
+            call.resolve(ret)
+        } catch (e: Exception) {
+            call.reject("Could not get plugin version", e)
         }
     }
 }
