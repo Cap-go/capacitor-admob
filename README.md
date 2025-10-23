@@ -39,11 +39,17 @@ npx cap sync
 <docgen-api>
 <!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
 
+AdMob Plus Plugin interface for displaying Google AdMob ads in Capacitor apps.
+
 ### start()
 
 ```typescript
 start() => Promise<void>
 ```
+
+Initialize and start the AdMob SDK.
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -54,9 +60,13 @@ start() => Promise<void>
 configure(config: AdMobConfig) => Promise<void>
 ```
 
-| Param        | Type                                                |
-| ------------ | --------------------------------------------------- |
-| **`config`** | <code><a href="#admobconfig">AdMobConfig</a></code> |
+Configure AdMob settings.
+
+| Param        | Type                                                | Description                       |
+| ------------ | --------------------------------------------------- | --------------------------------- |
+| **`config`** | <code><a href="#admobconfig">AdMobConfig</a></code> | - Configuration options for AdMob |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -67,9 +77,13 @@ configure(config: AdMobConfig) => Promise<void>
 configRequest(requestConfig: RequestConfig) => Promise<void>
 ```
 
-| Param               | Type                                                    |
-| ------------------- | ------------------------------------------------------- |
-| **`requestConfig`** | <code><a href="#requestconfig">RequestConfig</a></code> |
+Configure ad request settings.
+
+| Param               | Type                                                    | Description                     |
+| ------------------- | ------------------------------------------------------- | ------------------------------- |
+| **`requestConfig`** | <code><a href="#requestconfig">RequestConfig</a></code> | - Request configuration options |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -80,9 +94,13 @@ configRequest(requestConfig: RequestConfig) => Promise<void>
 adCreate<O extends MobileAdOptions>(opts: O) => Promise<void>
 ```
 
-| Param      | Type           |
-| ---------- | -------------- |
-| **`opts`** | <code>O</code> |
+Create a new ad instance.
+
+| Param      | Type           | Description                                         |
+| ---------- | -------------- | --------------------------------------------------- |
+| **`opts`** | <code>O</code> | - Options for creating the ad, including ad unit ID |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -93,11 +111,15 @@ adCreate<O extends MobileAdOptions>(opts: O) => Promise<void>
 adIsLoaded(opts: { id: number; }) => Promise<boolean>
 ```
 
-| Param      | Type                         |
-| ---------- | ---------------------------- |
-| **`opts`** | <code>{ id: number; }</code> |
+Check if an ad is loaded and ready to be shown.
+
+| Param      | Type                         | Description                   |
+| ---------- | ---------------------------- | ----------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the ad ID |
 
 **Returns:** <code>Promise&lt;boolean&gt;</code>
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -108,9 +130,13 @@ adIsLoaded(opts: { id: number; }) => Promise<boolean>
 adLoad(opts: { id: number; }) => Promise<void>
 ```
 
-| Param      | Type                         |
-| ---------- | ---------------------------- |
-| **`opts`** | <code>{ id: number; }</code> |
+Load an ad.
+
+| Param      | Type                         | Description                   |
+| ---------- | ---------------------------- | ----------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the ad ID |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -121,9 +147,13 @@ adLoad(opts: { id: number; }) => Promise<void>
 adShow(opts: { id: number; }) => Promise<void>
 ```
 
-| Param      | Type                         |
-| ---------- | ---------------------------- |
-| **`opts`** | <code>{ id: number; }</code> |
+Show a loaded ad.
+
+| Param      | Type                         | Description                   |
+| ---------- | ---------------------------- | ----------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the ad ID |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -134,9 +164,13 @@ adShow(opts: { id: number; }) => Promise<void>
 adHide(opts: { id: number; }) => Promise<void>
 ```
 
-| Param      | Type                         |
-| ---------- | ---------------------------- |
-| **`opts`** | <code>{ id: number; }</code> |
+Hide a currently displayed ad.
+
+| Param      | Type                         | Description                   |
+| ---------- | ---------------------------- | ----------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the ad ID |
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -147,7 +181,11 @@ adHide(opts: { id: number; }) => Promise<void>
 trackingAuthorizationStatus() => Promise<{ status: TrackingAuthorizationStatus | false; }>
 ```
 
+Get the current tracking authorization status (iOS only).
+
 **Returns:** <code>Promise&lt;{ status: false | <a href="#trackingauthorizationstatus">TrackingAuthorizationStatus</a>; }&gt;</code>
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -158,7 +196,11 @@ trackingAuthorizationStatus() => Promise<{ status: TrackingAuthorizationStatus |
 requestTrackingAuthorization() => Promise<{ status: TrackingAuthorizationStatus | false; }>
 ```
 
+Request tracking authorization from the user (iOS only).
+
 **Returns:** <code>Promise&lt;{ status: false | <a href="#trackingauthorizationstatus">TrackingAuthorizationStatus</a>; }&gt;</code>
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -169,12 +211,16 @@ requestTrackingAuthorization() => Promise<{ status: TrackingAuthorizationStatus 
 addListener(eventName: string, listenerFunc: (event: any) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
 ```
 
-| Param              | Type                                 |
-| ------------------ | ------------------------------------ |
-| **`eventName`**    | <code>string</code>                  |
-| **`listenerFunc`** | <code>(event: any) =&gt; void</code> |
+Add a listener for ad events.
+
+| Param              | Type                                 | Description                                  |
+| ------------------ | ------------------------------------ | -------------------------------------------- |
+| **`eventName`**    | <code>string</code>                  | - The name of the event to listen for        |
+| **`listenerFunc`** | <code>(event: any) =&gt; void</code> | - The function to call when the event occurs |
 
 **Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -185,9 +231,11 @@ addListener(eventName: string, listenerFunc: (event: any) => void) => Promise<Pl
 getPluginVersion() => Promise<{ version: string; }>
 ```
 
-Get the native Capacitor plugin version
+Get the native Capacitor plugin version.
 
 **Returns:** <code>Promise&lt;{ version: string; }&gt;</code>
+
+**Since:** 1.0.0
 
 --------------------
 
@@ -207,17 +255,23 @@ Get the native Capacitor plugin version
 
 #### AdMobConfig
 
-<code>{ appMuted?: boolean; appVolume?: number; }</code>
+Configuration options for AdMob.
+
+<code>{ /** Whether the app should be muted */ appMuted?: boolean; /** The app volume (0.0 to 1.0) */ appVolume?: number; }</code>
 
 
 #### RequestConfig
 
-<code>{ maxAdContentRating?: <a href="#maxadcontentrating">MaxAdContentRating</a>; sameAppKey?: boolean; tagForChildDirectedTreatment?: boolean | null; tagForUnderAgeOfConsent?: boolean | null; testDeviceIds?: string[]; }</code>
+Configuration for ad requests.
+
+<code>{ /** Maximum ad content rating */ maxAdContentRating?: <a href="#maxadcontentrating">MaxAdContentRating</a>; /** Whether to use the same app key */ sameAppKey?: boolean; /** Tag for child-directed treatment (true, false, or null for unspecified) */ tagForChildDirectedTreatment?: boolean | null; /** Tag for under age of consent (true, false, or null for unspecified) */ tagForUnderAgeOfConsent?: boolean | null; /** Array of test device IDs */ testDeviceIds?: string[]; }</code>
 
 
 #### MobileAdOptions
 
-<code>{ adUnitId: string }</code>
+Base options for mobile ads.
+
+<code>{ /** The ad unit ID from AdMob */ adUnitId: string }</code>
 
 
 ### Enums
@@ -225,22 +279,22 @@ Get the native Capacitor plugin version
 
 #### MaxAdContentRating
 
-| Members           | Value             |
-| ----------------- | ----------------- |
-| **`G`**           | <code>'G'</code>  |
-| **`MA`**          | <code>'MA'</code> |
-| **`PG`**          | <code>'PG'</code> |
-| **`T`**           | <code>'T'</code>  |
-| **`UNSPECIFIED`** | <code>''</code>   |
+| Members           | Value             | Description        |
+| ----------------- | ----------------- | ------------------ |
+| **`G`**           | <code>'G'</code>  | General Audiences  |
+| **`MA`**          | <code>'MA'</code> | Mature Audiences   |
+| **`PG`**          | <code>'PG'</code> | Parental Guidance  |
+| **`T`**           | <code>'T'</code>  | Teen               |
+| **`UNSPECIFIED`** | <code>''</code>   | Unspecified rating |
 
 
 #### TrackingAuthorizationStatus
 
-| Members             | Value          |
-| ------------------- | -------------- |
-| **`notDetermined`** | <code>0</code> |
-| **`restricted`**    | <code>1</code> |
-| **`denied`**        | <code>2</code> |
-| **`authorized`**    | <code>3</code> |
+| Members             | Value          | Description                                                |
+| ------------------- | -------------- | ---------------------------------------------------------- |
+| **`notDetermined`** | <code>0</code> | User has not yet received an authorization request         |
+| **`restricted`**    | <code>1</code> | User restricted, device is unable to provide authorization |
+| **`denied`**        | <code>2</code> | User denied authorization                                  |
+| **`authorized`**    | <code>3</code> | User authorized access                                     |
 
 </docgen-api>
