@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.1.0](https://github.com/Cap-go/capacitor-admob/compare/7.0.7...7.1.0) (2025-10-23)
+
+
+### Features
+
+* add getPluginVersion method to AdmobPlusPlugin and web implementation; update workflows for changelog and Discord notifications ([1e94717](https://github.com/Cap-go/capacitor-admob/commit/1e94717cee22ae74517f6eb6cdf091430f5d6d95))
+
+
+### Bug Fixes
+
+* remove content field from Discord webhook configuration ([048ab49](https://github.com/Cap-go/capacitor-admob/commit/048ab499324573dd201713160dd1545ebd5a215a))
+
 ## [7.0.7](https://github.com/Cap-go/capacitor-admob/compare/7.0.6...7.0.7) (2025-10-16)
 
 ## [7.0.6](https://github.com/Cap-go/capacitor-admob/compare/7.0.5...7.0.6) (2025-10-15)
