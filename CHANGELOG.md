@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.2.0](https://github.com/Cap-go/capacitor-admob/compare/7.1.2...7.2.0) (2025-10-23)
+
+
+### Features
+
+* enhance documentation for AdMob Plus Plugin and its configurations ([514633c](https://github.com/Cap-go/capacitor-admob/commit/514633cd6d7b6e93263219129d93d11af8c6ad17))
+
 ## [7.1.2](https://github.com/Cap-go/capacitor-admob/compare/7.1.1...7.1.2) (2025-10-23)
 
 
