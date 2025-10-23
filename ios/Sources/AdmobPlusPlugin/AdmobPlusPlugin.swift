@@ -3,7 +3,7 @@ import Foundation
 
 @objc(AdmobPlusPlugin)
 public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
-    private let PLUGIN_VERSION: String = "7.1.1"
+    private let PLUGIN_VERSION: String = "7.1.2"
     public let identifier = "AdmobPlusPlugin"
     public let jsName = "AdMobPlus"
     public let pluginMethods: [CAPPluginMethod] = [

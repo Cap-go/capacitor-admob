@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.1.2](https://github.com/Cap-go/capacitor-admob/compare/7.1.1...7.1.2) (2025-10-23)
+
+
+### Bug Fixes
+
+* remove footer in discord ([c31d507](https://github.com/Cap-go/capacitor-admob/commit/c31d507ad7a22a97c49d6e5a934a4da83b1daeb5))
+
 ## [7.1.1](https://github.com/Cap-go/capacitor-admob/compare/7.1.0...7.1.1) (2025-10-23)
 
 
