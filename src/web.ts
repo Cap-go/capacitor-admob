@@ -60,4 +60,8 @@ export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
     console.log('requestTrackingAuthorization', opts);
     return { status: false };
   }
+
+  async getPluginVersion(): Promise<{ version: string }> {
+    return { version: 'web' };
+  }
 }
