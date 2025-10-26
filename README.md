@@ -7,6 +7,10 @@
 </div>
 AdMob SDK bridge for Capacitor apps
 
+## Documentation
+
+The most complete doc is available here: https://capgo.app/docs/plugins/admob/
+
 ## Install
 
 ```bash
