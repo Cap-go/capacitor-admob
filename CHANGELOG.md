@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.4.0](https://github.com/Cap-go/capacitor-admob/compare/7.3.3...7.4.0) (2025-10-28)
+
+
+### Features
+
+* add support for Google Mobile Ads SDK with banner, interstitial, and rewarded ads ([0efc48d](https://github.com/Cap-go/capacitor-admob/commit/0efc48d4379331b572c4f59fc1261bda44276893))
+
+
+### Bug Fixes
+
+* CI/CD config ([6e9e3a4](https://github.com/Cap-go/capacitor-admob/commit/6e9e3a4bc591389075e58848dc82c415500ce2ce))
+* update github action ([c8adc43](https://github.com/Cap-go/capacitor-admob/commit/c8adc4356b4cecca285a4ac1be7bdb7a89fcf9ce))
+
 ## [7.3.3](https://github.com/Cap-go/capacitor-admob/compare/7.3.2...7.3.3) (2025-10-27)
 
 
