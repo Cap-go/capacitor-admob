@@ -19,7 +19,7 @@ import org.json.JSONObject
 
 @CapacitorPlugin(name = "AdMobPlus")
 class AdMobPlusPlugin : Plugin(), Helper.Adapter {
-    private val PLUGIN_VERSION = "7.3.3"
+    private val PLUGIN_VERSION = "7.4.1"
     private var helper: Helper? = null
     override fun load() {
         super.load()
