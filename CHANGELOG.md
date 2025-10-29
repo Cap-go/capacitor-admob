@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.4.1](https://github.com/Cap-go/capacitor-admob/compare/7.4.0...7.4.1) (2025-10-29)
+
+
+### Bug Fixes
+
+* update AI model in build workflow ([f524cbe](https://github.com/Cap-go/capacitor-admob/commit/f524cbe932674f32008fd9759e890d917ea0f620))
+
 ## [7.4.0](https://github.com/Cap-go/capacitor-admob/compare/7.3.3...7.4.0) (2025-10-28)
 
 
