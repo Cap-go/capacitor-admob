@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.4.4](https://github.com/Cap-go/capacitor-admob/compare/7.4.3...7.4.4) (2025-10-30)
+
+
+### Bug Fixes
+
+* update GADMobileAds start closure and add missing semicolon in MobileAdOptions ([c9ad4ee](https://github.com/Cap-go/capacitor-admob/commit/c9ad4ee4a807334de0559d49f2480f1670e2a230))
+
 ## [7.4.3](https://github.com/Cap-go/capacitor-admob/compare/7.4.2...7.4.3) (2025-10-30)
 
 

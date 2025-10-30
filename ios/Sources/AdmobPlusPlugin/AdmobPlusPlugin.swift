@@ -5,7 +5,7 @@ import AppTrackingTransparency
 
 @objc(AdmobPlusPlugin)
 public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
-    private let pluginVersion: String = "7.4.3"
+    private let pluginVersion: String = "7.4.4"
     public let identifier = "AdmobPlusPlugin"
     public let jsName = "AdMobPlus"
     public let pluginMethods: [CAPPluginMethod] = [
