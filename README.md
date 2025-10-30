@@ -275,7 +275,7 @@ Configuration for ad requests.
 
 Base options for mobile ads.
 
-<code>{ /** The ad unit ID from AdMob */ adUnitId: string }</code>
+<code>{ /** The ad unit ID from AdMob */ adUnitId: string; }</code>
 
 
 ### Enums
