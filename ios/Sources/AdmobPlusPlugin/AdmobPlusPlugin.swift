@@ -27,7 +27,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func start(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            GADMobileAds.sharedInstance().start { status in
+            GADMobileAds.sharedInstance().start { _ in
                 call.resolve()
             }
         }

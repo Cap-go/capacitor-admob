@@ -71,7 +71,7 @@ export enum TrackingAuthorizationStatus {
  */
 export type MobileAdOptions = {
   /** The ad unit ID from AdMob */
-  adUnitId: string
+  adUnitId: string;
 };
 
 /**
