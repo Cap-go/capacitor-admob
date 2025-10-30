@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.4.3](https://github.com/Cap-go/capacitor-admob/compare/7.4.2...7.4.3) (2025-10-30)
+
+
+### Bug Fixes
+
+* pluginVersion lint issue ([5c44832](https://github.com/Cap-go/capacitor-admob/commit/5c448321fb2541c62b8ac3414ad94a49bc96b8a7))
+
 ## [7.4.2](https://github.com/Cap-go/capacitor-admob/compare/7.4.1...7.4.2) (2025-10-29)
 
 
