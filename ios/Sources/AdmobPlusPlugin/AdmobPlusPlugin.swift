@@ -215,21 +215,13 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func trackingAuthorizationStatus(_ call: CAPPluginCall) {
-        if #available(iOS 14, *) {
-            let status = ATTrackingManager.trackingAuthorizationStatus
-            call.resolve(["status": status.rawValue])
-        } else {
-            call.resolve(["status": false])
-        }
+        let status = ATTrackingManager.trackingAuthorizationStatus
+        call.resolve(["status": status.rawValue])
     }
 
     @objc func requestTrackingAuthorization(_ call: CAPPluginCall) {
-        if #available(iOS 14, *) {
-            ATTrackingManager.requestTrackingAuthorization { status in
-                call.resolve(["status": status.rawValue])
-            }
-        } else {
-            call.resolve(["status": false])
+        ATTrackingManager.requestTrackingAuthorization { status in
+            call.resolve(["status": status.rawValue])
         }
     }
 
