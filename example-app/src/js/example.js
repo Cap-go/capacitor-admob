@@ -16,6 +16,8 @@ const ui = {
   bannerLoad: document.getElementById('bannerLoadButton'),
   bannerShow: document.getElementById('bannerShowButton'),
   bannerHide: document.getElementById('bannerHideButton'),
+  bannerHideTop: document.getElementById('bannerHideTopButton'),
+  bannerHideBottom: document.getElementById('bannerHideBottomButton'),
   interstitialUnitId: document.getElementById('interstitialUnitId'),
   interstitialLoad: document.getElementById('interstitialLoadButton'),
   interstitialShow: document.getElementById('interstitialShowButton'),
@@ -29,7 +31,8 @@ const ui = {
   log: document.getElementById('logOutput'),
 };
 
-let bannerAd = null;
+let bannerAdTop = null;
+let bannerAdBottom = null;
 let bannerConfig = { unitId: '', position: 'bottom' };
 let interstitialAd = null;
 let interstitialConfig = { unitId: '' };
@@ -183,11 +186,17 @@ const applyRequestConfig = async () => {
 };
 
 const ensureBannerInstance = (unitId, position) => {
-  if (!bannerAd || bannerConfig.unitId !== unitId || bannerConfig.position !== position) {
-    bannerAd = new BannerAd({ adUnitId: unitId, position });
-    bannerConfig = { unitId, position };
+  if (position === 'top') {
+    if (!bannerAdTop || bannerConfig.unitId !== unitId) {
+      bannerAdTop = new BannerAd({ adUnitId: unitId, position: 'top' });
+    }
+    return bannerAdTop;
+  } else {
+    if (!bannerAdBottom || bannerConfig.unitId !== unitId) {
+      bannerAdBottom = new BannerAd({ adUnitId: unitId, position: 'bottom' });
+    }
+    return bannerAdBottom;
   }
-  return bannerAd;
 };
 
 const loadBanner = async () => {
@@ -223,15 +232,44 @@ const showBanner = async () => {
 };
 
 const hideBanner = async () => {
+  const position = ui.bannerPosition.value === 'top' ? 'top' : 'bottom';
+  const bannerAd = position === 'top' ? bannerAdTop : bannerAdBottom;
+  
   if (!bannerAd) {
-    log('No banner ad initialised yet.');
+    log(`No ${position} banner ad initialised yet.`);
     return;
   }
   try {
     await bannerAd.hide();
-    log('Banner hide requested.');
+    log(`Banner hide requested for ${position} banner.`);
   } catch (error) {
-    log('Failed to hide banner.', error);
+    log(`Failed to hide ${position} banner.`, error);
+  }
+};
+
+const hideBannerTop = async () => {
+  if (!bannerAdTop) {
+    log('No top banner ad initialised yet.');
+    return;
+  }
+  try {
+    await bannerAdTop.hide();
+    log('Top banner hide requested.');
+  } catch (error) {
+    log('Failed to hide top banner.', error);
+  }
+};
+
+const hideBannerBottom = async () => {
+  if (!bannerAdBottom) {
+    log('No bottom banner ad initialised yet.');
+    return;
+  }
+  try {
+    await bannerAdBottom.hide();
+    log('Bottom banner hide requested.');
+  } catch (error) {
+    log('Failed to hide bottom banner.', error);
   }
 };
 
@@ -346,6 +384,12 @@ ui.bannerShow.addEventListener('click', () => {
 });
 ui.bannerHide.addEventListener('click', () => {
   hideBanner().catch((error) => log('Unexpected banner hide error', error));
+});
+ui.bannerHideTop.addEventListener('click', () => {
+  hideBannerTop().catch((error) => log('Unexpected top banner hide error', error));
+});
+ui.bannerHideBottom.addEventListener('click', () => {
+  hideBannerBottom().catch((error) => log('Unexpected bottom banner hide error', error));
 });
 ui.interstitialLoad.addEventListener('click', () => {
   loadInterstitial().catch((error) => log('Unexpected interstitial load error', error));
