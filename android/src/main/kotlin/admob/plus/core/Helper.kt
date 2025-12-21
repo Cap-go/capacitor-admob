@@ -91,7 +91,7 @@ class Helper(private val adapter: Adapter) {
 
         @JvmStatic
         fun getParentView(view: View?): ViewGroup? {
-            return if (view == null) null else view.parent as ViewGroup
+            return if (view == null) null else view.parent as? ViewGroup
         }
 
         @JvmStatic
