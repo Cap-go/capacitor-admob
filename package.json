@@ -1,6 +1,6 @@
 {
   "name": "@capgo/capacitor-admob",
-  "version": "8.0.7",
+  "version": "8.0.8",
   "description": "Capacitor plugin to bridge AdMob SDKs for iOS and Android",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
