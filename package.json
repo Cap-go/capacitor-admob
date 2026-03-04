@@ -1,6 +1,6 @@
 {
   "name": "@capgo/capacitor-admob",
-  "version": "8.0.5",
+  "version": "8.0.11",
   "description": "Capacitor plugin to bridge AdMob SDKs for iOS and Android",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -46,7 +46,8 @@
     "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.mjs",
     "clean": "rimraf ./dist",
     "watch": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "check:wiring": "node scripts/check-capacitor-plugin-wiring.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.0.0",
