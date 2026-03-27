@@ -48,8 +48,7 @@ class BannerAd: NSObject, Ad {
                 return
             }
 
-            guard let webView = self.plugin?.bridge?.webView,
-                  let viewController = self.plugin?.bridge?.viewController else {
+            guard let viewController = self.plugin?.bridge?.viewController else {
                 completion(AdMobError.unknown("Unable to access view hierarchy"))
                 return
             }

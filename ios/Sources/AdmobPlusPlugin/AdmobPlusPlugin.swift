@@ -96,6 +96,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         nextAdId = adId + 1
 
         let position = call.getString("position") ?? "bottom"
+        let serverSideVerificationOptions = AdMobHelper.buildServerSideVerificationOptions(from: call.getObject("serverSideVerification"))
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else {
@@ -110,9 +111,9 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
             case "InterstitialAd":
                 ad = InterstitialAd(id: adId, adUnitId: adUnitId, plugin: self)
             case "RewardedAd":
-                ad = RewardedAd(id: adId, adUnitId: adUnitId, plugin: self)
+                ad = RewardedAd(id: adId, adUnitId: adUnitId, serverSideVerificationOptions: serverSideVerificationOptions, plugin: self)
             case "RewardedInterstitialAd":
-                ad = RewardedInterstitialAd(id: adId, adUnitId: adUnitId, plugin: self)
+                ad = RewardedInterstitialAd(id: adId, adUnitId: adUnitId, serverSideVerificationOptions: serverSideVerificationOptions, plugin: self)
             default:
                 call.reject("Unsupported ad class: \(adClass)")
                 return

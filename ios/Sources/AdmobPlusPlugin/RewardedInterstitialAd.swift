@@ -6,6 +6,7 @@ import Capacitor
 class RewardedInterstitialAd: NSObject, Ad {
     let id: Int
     let adUnitId: String
+    private let serverSideVerificationOptions: GADServerSideVerificationOptions?
     private var rewardedInterstitialAd: GADRewardedInterstitialAd?
     private weak var plugin: AdmobPlusPlugin?
 
@@ -13,9 +14,10 @@ class RewardedInterstitialAd: NSObject, Ad {
         return rewardedInterstitialAd != nil
     }
 
-    init(id: Int, adUnitId: String, plugin: AdmobPlusPlugin) {
+    init(id: Int, adUnitId: String, serverSideVerificationOptions: GADServerSideVerificationOptions?, plugin: AdmobPlusPlugin) {
         self.id = id
         self.adUnitId = adUnitId
+        self.serverSideVerificationOptions = serverSideVerificationOptions
         self.plugin = plugin
         super.init()
     }
@@ -36,6 +38,7 @@ class RewardedInterstitialAd: NSObject, Ad {
             }
 
             self.rewardedInterstitialAd = ad
+            self.rewardedInterstitialAd?.serverSideVerificationOptions = self.serverSideVerificationOptions
             self.rewardedInterstitialAd?.fullScreenContentDelegate = self
 
             self.plugin?.notifyListeners(Events.rewardedInterstitialLoad, data: ["id": self.id])

@@ -1,5 +1,6 @@
 import Foundation
 import GoogleMobileAds
+import Capacitor
 
 class AdManager {
     static let shared = AdManager()
@@ -41,6 +42,25 @@ class AdMobHelper {
     static func buildAdRequest() -> GADRequest {
         let request = GADRequest()
         return request
+    }
+
+    static func buildServerSideVerificationOptions(from object: JSObject?) -> GADServerSideVerificationOptions? {
+        guard let object = object else {
+            return nil
+        }
+
+        let options = GADServerSideVerificationOptions()
+        let userId = object["userId"] as? String
+        let customData = object["customData"] as? String
+
+        if userId == nil && customData == nil {
+            return nil
+        }
+
+        options.userIdentifier = userId
+        options.customRewardString = customData
+
+        return options
     }
 }
 

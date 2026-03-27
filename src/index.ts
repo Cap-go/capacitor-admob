@@ -1,6 +1,6 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { AdMobPlusPlugin, MobileAdOptions } from './definitions';
+import type { AdMobPlusPlugin, MobileAdOptions, RewardedAdOptions, RewardedInterstitialAdOptions } from './definitions';
 
 const AdMob = registerPlugin<AdMobPlusPlugin>('AdMobPlus', {
   web: () => import('./web').then((m) => new m.AdMobPlusWeb()),
@@ -139,7 +139,7 @@ class InterstitialAd extends MobileAd {
   }
 }
 
-class RewardedAd extends MobileAd {
+class RewardedAd extends MobileAd<RewardedAdOptions> {
   static cls = 'RewardedAd';
 
   isLoaded(): Promise<boolean> {
@@ -155,7 +155,7 @@ class RewardedAd extends MobileAd {
   }
 }
 
-class RewardedInterstitialAd extends MobileAd {
+class RewardedInterstitialAd extends MobileAd<RewardedInterstitialAdOptions> {
   static cls = 'RewardedInterstitialAd';
 
   isLoaded(): Promise<boolean> {
