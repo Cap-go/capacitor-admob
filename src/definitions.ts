@@ -75,6 +75,42 @@ export type MobileAdOptions = {
 };
 
 /**
+ * Server-side verification options for rewarded ads.
+ *
+ * @since 1.0.0
+ */
+export type ServerSideVerificationOptions = {
+  /**
+   * A user identifier included in the server-side verification callback.
+   */
+  userId?: string;
+  /**
+   * Custom data included in the server-side verification callback.
+   */
+  customData?: string;
+};
+
+/**
+ * Options for rewarded ads.
+ *
+ * @since 1.0.0
+ */
+export type RewardedAdOptions = MobileAdOptions & {
+  /** Server-side verification options sent with rewarded callbacks. */
+  serverSideVerification?: ServerSideVerificationOptions;
+};
+
+/**
+ * Options for rewarded interstitial ads.
+ *
+ * @since 1.0.0
+ */
+export type RewardedInterstitialAdOptions = MobileAdOptions & {
+  /** Server-side verification options sent with rewarded callbacks. */
+  serverSideVerification?: ServerSideVerificationOptions;
+};
+
+/**
  * AdMob Plus Plugin interface for displaying Google AdMob ads in Capacitor apps.
  *
  * @since 1.0.0
