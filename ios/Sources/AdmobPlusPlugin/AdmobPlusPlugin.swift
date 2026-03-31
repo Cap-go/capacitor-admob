@@ -27,7 +27,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func start(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            GADMobileAds.sharedInstance().start { _ in
+            MobileAds.shared.start { _ in
                 call.resolve()
             }
         }
@@ -38,18 +38,18 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         let appVolume = call.getFloat("appVolume")
 
         if let muted = appMuted {
-            GADMobileAds.sharedInstance().applicationMuted = muted
+            MobileAds.shared.isApplicationMuted = muted
         }
 
         if let volume = appVolume {
-            GADMobileAds.sharedInstance().applicationVolume = volume
+            MobileAds.shared.applicationVolume = volume
         }
 
         call.resolve()
     }
 
     @objc func configRequest(_ call: CAPPluginCall) {
-        let requestConfiguration = GADMobileAds.sharedInstance().requestConfiguration
+        let requestConfiguration = MobileAds.shared.requestConfiguration
 
         if let maxAdContentRating = call.getString("maxAdContentRating") {
             switch maxAdContentRating {

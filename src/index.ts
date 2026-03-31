@@ -46,7 +46,8 @@ class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
 
   protected async isLoaded() {
     await this.init();
-    return AdMob.adIsLoaded({ id: this.id });
+    const result = (await AdMob.adIsLoaded({ id: this.id })) as boolean | { value?: boolean };
+    return typeof result === 'boolean' ? result : Boolean(result.value);
   }
 
   protected async load() {

@@ -4,11 +4,9 @@ import admob.plus.capacitor.ExecuteContext
 import admob.plus.capacitor.Generated
 import admob.plus.core.Context
 import admob.plus.core.GenericAd
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAd
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAdEventCallback
 
 class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
     private var mAd: InterstitialAd? = null
@@ -20,20 +18,18 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
     override fun load(ctx: Context?) {
         clear()
         InterstitialAd.load(
-            activity,
-            adUnitId,
-            ctx!!.optAdRequest(),
-            object : InterstitialAdLoadCallback() {
+            ctx!!.optAdRequest(adUnitId),
+            object : AdLoadCallback<InterstitialAd> {
                 override fun onAdLoaded(interstitialAd: InterstitialAd) {
                     mAd = interstitialAd
-                    mAd!!.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    mAd!!.adEventCallback = object : InterstitialAdEventCallback {
                         override fun onAdDismissedFullScreenContent() {
                             clear()
                             emit(Generated.Events.INTERSTITIAL_DISMISS)
                         }
 
-                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                            emit(Generated.Events.INTERSTITIAL_SHOW_FAIL, adError)
+                        override fun onAdFailedToShowFullScreenContent(error: com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError) {
+                            emit(Generated.Events.INTERSTITIAL_SHOW_FAIL, error)
                         }
 
                         override fun onAdShowedFullScreenContent() {
@@ -43,12 +39,16 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
                         override fun onAdImpression() {
                             emit(Generated.Events.INTERSTITIAL_IMPRESSION)
                         }
+
+                        override fun onAdClicked() {
+                            emit(Generated.Events.AD_CLICK)
+                        }
                     }
                     emit(Generated.Events.INTERSTITIAL_LOAD)
                     ctx.resolve()
                 }
 
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                override fun onAdFailedToLoad(loadAdError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
                     clear()
                     emit(Generated.Events.INTERSTITIAL_LOAD_FAIL, loadAdError)
                     ctx.reject(loadAdError.message)
@@ -66,7 +66,6 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
 
     private fun clear() {
         if (mAd != null) {
-            mAd!!.fullScreenContentCallback = null
             mAd = null
         }
     }

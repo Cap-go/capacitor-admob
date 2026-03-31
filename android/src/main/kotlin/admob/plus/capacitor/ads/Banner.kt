@@ -8,63 +8,73 @@ import admob.plus.core.GenericAd
 import admob.plus.core.Helper.Companion.getParentView
 import admob.plus.core.Helper.Companion.removeFromParentView
 import android.annotation.SuppressLint
+import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.widget.LinearLayout
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
+import com.google.android.libraries.ads.mobile.sdk.banner.AdView
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAd
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
 import java.util.Objects
 
 class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
-    private val adSize: AdSize
     private val gravity: Int
     private var adView: AdView? = null
+    private var loaded = false
 
     init {
-        adSize = AdSize.SMART_BANNER
         gravity = if ("top" == ctx.optPosition()) Gravity.TOP else Gravity.BOTTOM
     }
 
     override val isLoaded: Boolean
-        get() = adView != null
+        get() = loaded
 
     override fun load(ctx: Context?) {
         if (adView == null) {
             adView = AdView(activity)
-            adView!!.adUnitId = adUnitId
-            adView!!.setAdSize(adSize)
-            adView!!.adListener = object : AdListener() {
-                override fun onAdClicked() {
-                    emit(Generated.Events.BANNER_CLICK)
-                }
+        }
 
-                override fun onAdClosed() {
-                    emit(Generated.Events.BANNER_CLOSE)
-                }
+        loaded = false
+        val adSize = resolveAdSize()
+        val collapsibleAnchor = if (gravity == Gravity.TOP) "top" else "bottom"
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    emit(Generated.Events.BANNER_LOAD_FAIL, error)
-                }
+        adView!!.loadAd(
+            ctx!!.optBannerAdRequest(adUnitId, adSize, collapsibleAnchor),
+            object : AdLoadCallback<BannerAd> {
+                override fun onAdLoaded(bannerAd: BannerAd) {
+                    loaded = true
+                    bannerAd.adEventCallback = object : BannerAdEventCallback {
+                        override fun onAdClicked() {
+                            emit(Generated.Events.BANNER_CLICK)
+                        }
 
-                override fun onAdImpression() {
-                    emit(Generated.Events.BANNER_IMPRESSION)
-                }
+                        override fun onAdDismissedFullScreenContent() {
+                            emit(Generated.Events.BANNER_CLOSE)
+                        }
 
-                override fun onAdLoaded() {
+                        override fun onAdImpression() {
+                            emit(Generated.Events.BANNER_IMPRESSION)
+                        }
+
+                        override fun onAdShowedFullScreenContent() {
+                            emit(Generated.Events.BANNER_OPEN)
+                        }
+                    }
                     emit(Generated.Events.BANNER_LOAD)
+                    ctx.resolve()
                 }
 
-                override fun onAdOpened() {
-                    emit(Generated.Events.BANNER_OPEN)
+                override fun onAdFailedToLoad(loadAdError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
+                    loaded = false
+                    emit(Generated.Events.BANNER_LOAD_FAIL, loadAdError)
+                    ctx.reject(loadAdError.message)
                 }
             }
-        }
-        adView!!.loadAd(ctx!!.optAdRequest())
-        ctx.resolve()
+        )
     }
 
     override fun show(ctx: Context?) {
@@ -73,7 +83,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
         if (getParentView(adView) == null) {
             addBannerView(ExecuteContext.Companion.plugin, adView)
         } else if (adView!!.visibility == View.GONE) {
-            adView!!.resume()
             adView!!.visibility = View.VISIBLE
         } else {
             val wvParentView = getParentView(webView)
@@ -88,7 +97,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
 
     override fun hide(ctx: Context?) {
         if (adView != null) {
-            adView!!.pause()
             adView!!.visibility = View.GONE
         }
         ctx!!.resolve()
@@ -96,6 +104,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
 
     override fun destroy() {
         if (adView != null) {
+            loaded = false
             adView!!.destroy()
             adView = null
         }
@@ -139,6 +148,12 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
         parentView!!.bringToFront()
         parentView!!.requestLayout()
         parentView!!.requestFocus()
+    }
+
+    private fun resolveAdSize(): AdSize {
+        val displayMetrics: DisplayMetrics = activity.resources.displayMetrics
+        val adWidth = (displayMetrics.widthPixels / displayMetrics.density).toInt().coerceAtLeast(1)
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(activity, adWidth)
     }
 
     companion object {

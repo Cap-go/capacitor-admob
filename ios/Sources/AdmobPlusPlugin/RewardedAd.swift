@@ -6,15 +6,15 @@ import Capacitor
 class RewardedAd: NSObject, Ad {
     let id: Int
     let adUnitId: String
-    private let serverSideVerificationOptions: GADServerSideVerificationOptions?
-    private var rewardedAd: GADRewardedAd?
+    private let serverSideVerificationOptions: ServerSideVerificationOptions?
+    private var rewardedAd: GoogleMobileAds.RewardedAd?
     private weak var plugin: AdmobPlusPlugin?
 
     var isLoaded: Bool {
         return rewardedAd != nil
     }
 
-    init(id: Int, adUnitId: String, serverSideVerificationOptions: GADServerSideVerificationOptions?, plugin: AdmobPlusPlugin) {
+    init(id: Int, adUnitId: String, serverSideVerificationOptions: ServerSideVerificationOptions?, plugin: AdmobPlusPlugin) {
         self.id = id
         self.adUnitId = adUnitId
         self.serverSideVerificationOptions = serverSideVerificationOptions
@@ -25,7 +25,7 @@ class RewardedAd: NSObject, Ad {
     func load(completion: @escaping (Error?) -> Void) {
         let request = AdMobHelper.buildAdRequest()
 
-        GADRewardedAd.load(withAdUnitID: adUnitId, request: request) { [weak self] ad, error in
+        GoogleMobileAds.RewardedAd.load(with: adUnitId, request: request) { [weak self] ad, error in
             guard let self = self else { return }
 
             if let error = error {
@@ -58,7 +58,7 @@ class RewardedAd: NSObject, Ad {
                 return
             }
 
-            rewardedAd.present(fromRootViewController: viewController) { [weak self] in
+            rewardedAd.present(from: viewController) { [weak self] in
                 guard let self = self else { return }
                 let reward = rewardedAd.adReward
                 self.plugin?.notifyListeners(Events.rewardedReward, data: [
@@ -78,27 +78,27 @@ class RewardedAd: NSObject, Ad {
     }
 }
 
-extension RewardedAd: GADFullScreenContentDelegate {
-    func adDidRecordImpression(_ ad: GADFullScreenPresentingAd) {
+extension RewardedAd: FullScreenContentDelegate {
+    func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.rewardedImpression, data: ["id": id])
     }
 
-    func adDidRecordClick(_ ad: GADFullScreenPresentingAd) {
+    func adDidRecordClick(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.adClick, data: ["id": id])
     }
 
-    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         plugin?.notifyListeners(Events.rewardedShowFail, data: [
             "id": id,
             "error": error.localizedDescription
         ])
     }
 
-    func adWillPresentFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.rewardedShow, data: ["id": id])
     }
 
-    func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.rewardedDismiss, data: ["id": id])
         rewardedAd = nil
     }

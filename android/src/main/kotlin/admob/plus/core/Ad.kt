@@ -3,8 +3,9 @@ package admob.plus.core
 import android.R
 import android.app.Activity
 import android.view.ViewGroup
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.rewarded.RewardItem
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardItem
 import java.util.Objects
 
 abstract class Ad(val id: Int, val adUnitId: String) {
@@ -27,12 +28,20 @@ abstract class Ad(val id: Int, val adUnitId: String) {
     val contentView: ViewGroup?
         get() = activity.findViewById(R.id.content)
 
-    protected fun emit(eventName: String?, error: AdError) {
+    protected fun emit(eventName: String?, error: LoadAdError) {
         this.emit(eventName, object : HashMap<String?, Any?>() {
             init {
-                put("code", error.code)
+                put("code", error.code.value)
                 put("message", error.message)
-                put("cause", error.cause)
+            }
+        })
+    }
+
+    protected fun emit(eventName: String?, error: FullScreenContentError) {
+        this.emit(eventName, object : HashMap<String?, Any?>() {
+            init {
+                put("code", error.code.value)
+                put("message", error.message)
             }
         })
     }

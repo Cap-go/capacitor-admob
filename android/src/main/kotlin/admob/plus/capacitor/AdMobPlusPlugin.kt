@@ -7,24 +7,34 @@ import admob.plus.capacitor.ads.RewardedInterstitial
 import admob.plus.core.GenericAd
 import admob.plus.core.Helper
 import android.app.Activity
+import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import androidx.annotation.RequiresApi
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.initialization.InitializationStatus
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
 import org.json.JSONException
 import org.json.JSONObject
 
 @CapacitorPlugin(name = "AdMobPlus")
 class AdMobPlusPlugin : Plugin(), Helper.Adapter {
-    private val pluginVersion = "7.4.1"
+    private val pluginVersion = "8.0.15"
     private var helper: Helper? = null
+
     override fun load() {
         super.load()
         helper = Helper(this)
-        ExecuteContext.Companion.plugin = this
+        ExecuteContext.plugin = this
+        applyAdMobApi35WorkaroundIfNeeded(activity.application)
     }
 
     @PluginMethod
@@ -47,7 +57,17 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
 
     @PluginMethod
     fun start(call: PluginCall) {
-        MobileAds.initialize(context) { status: InitializationStatus? ->
+        val appId = getAppIdFromManifest()
+        if (appId == null) {
+            call.reject("AdMob App ID missing")
+            return
+        }
+
+        val initializationConfig = InitializationConfig.Builder(appId)
+            .setRequestConfiguration(MobileAds.getRequestConfiguration())
+            .build()
+
+        MobileAds.initialize(context, initializationConfig) {
             helper!!.configForTestLab()
             call.resolve()
         }
@@ -70,19 +90,23 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adCreate(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        getBridge().executeOnMainThread {
+        bridge.executeOnMainThread {
             val adClass = ctx.optString("cls")
             if (adClass == null) {
                 ctx.reject("ad cls is missing")
             } else {
-                when (adClass) {
+                val created = when (adClass) {
                     "BannerAd" -> Banner(ctx)
                     "InterstitialAd" -> Interstitial(ctx)
                     "RewardedAd" -> Rewarded(ctx)
                     "RewardedInterstitialAd" -> RewardedInterstitial(ctx)
-                    else -> ctx.reject("ad cls is not supported: $adClass")
+                    else -> null
                 }
-                ctx.resolve()
+                if (created == null) {
+                    ctx.reject("ad cls is not supported: $adClass")
+                } else {
+                    ctx.resolve()
+                }
             }
         }
     }
@@ -90,7 +114,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adIsLoaded(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        getBridge().executeOnMainThread {
+        bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             if (ad != null) {
                 ctx.resolve(ad.isLoaded)
@@ -101,7 +125,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adLoad(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        getBridge().executeOnMainThread {
+        bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             ad?.load(ctx)
         }
@@ -110,7 +134,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adShow(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        getBridge().executeOnMainThread {
+        bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             if (ad != null) {
                 if (ad.isLoaded) {
@@ -125,7 +149,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adHide(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        getBridge().executeOnMainThread {
+        bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             ad?.hide(ctx)
         }
@@ -139,11 +163,13 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         get() = getActivity()
 
     override fun emit(eventName: String?, data: Map<String?, Any?>?) {
-        try {
-            emit(eventName, JSObject.fromJSONObject(JSONObject(data)))
-        } catch (e: JSONException) {
-            e.printStackTrace()
+        val payload = JSObject()
+        data?.forEach { (key, value) ->
+            if (key != null) {
+                payload.put(key, value)
+            }
         }
+        emit(eventName, payload)
     }
 
     @PluginMethod
@@ -154,6 +180,59 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             call.resolve(ret)
         } catch (e: Exception) {
             call.reject("Could not get plugin version", e)
+        }
+    }
+
+    private fun getAppIdFromManifest(): String? {
+        return try {
+            val appContext: Context = context.applicationContext
+            val applicationInfo = appContext.packageManager.getApplicationInfo(
+                appContext.packageName,
+                PackageManager.GET_META_DATA
+            )
+            applicationInfo.metaData?.getString("com.google.android.gms.ads.APPLICATION_ID")
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun applyAdMobApi35WorkaroundIfNeeded(application: Application) {
+        if (Build.VERSION.SDK_INT < 35) {
+            return
+        }
+
+        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+
+            override fun onActivityStarted(activity: Activity) {
+                applyApi35WorkaroundToActivity(activity)
+            }
+
+            override fun onActivityResumed(activity: Activity) {
+                applyApi35WorkaroundToActivity(activity)
+            }
+
+            override fun onActivityPaused(activity: Activity) = Unit
+
+            override fun onActivityStopped(activity: Activity) = Unit
+
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+
+            override fun onActivityDestroyed(activity: Activity) = Unit
+        })
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun applyApi35WorkaroundToActivity(activity: Activity) {
+        if (activity.javaClass.name != "com.google.android.gms.ads.AdActivity") {
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            activity.window.insetsController?.let { controller ->
+                controller.hide(WindowInsets.Type.systemBars())
+                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
+            }
         }
     }
 }

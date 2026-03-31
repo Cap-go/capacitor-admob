@@ -8,7 +8,8 @@ import android.util.DisplayMetrics
 import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
-import com.google.android.gms.ads.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.common.RequestConfiguration
 import org.json.JSONArray
 import java.math.BigInteger
 import java.security.MessageDigest
@@ -30,14 +31,18 @@ class Helper(private val adapter: Adapter) {
             return
         }
         val config = MobileAds.getRequestConfiguration()
-        val testDeviceIds = config.testDeviceIds
+        val testDeviceIds = config.testDeviceIds.toMutableList()
         val deviceId = deviceId
         if (testDeviceIds.contains(deviceId)) {
             return
         }
         testDeviceIds.add(deviceId)
-        val builder = config.toBuilder()
-        builder.setTestDeviceIds(testDeviceIds)
+        val builder = RequestConfiguration.Builder()
+            .setTagForChildDirectedTreatment(config.tagForChildDirectedTreatment)
+            .setTagForUnderAgeOfConsent(config.tagForUnderAgeOfConsent)
+            .setMaxAdContentRating(config.maxAdContentRating)
+            .setTestDeviceIds(testDeviceIds)
+        builder.setPublisherPrivacyPersonalizationState(config.publisherPrivacyPersonalizationState)
         MobileAds.setRequestConfiguration(builder.build())
     }
 

@@ -39,17 +39,17 @@ extension Ad {
 }
 
 class AdMobHelper {
-    static func buildAdRequest() -> GADRequest {
-        let request = GADRequest()
+    static func buildAdRequest() -> Request {
+        let request = Request()
         return request
     }
 
-    static func buildServerSideVerificationOptions(from object: JSObject?) -> GADServerSideVerificationOptions? {
+    static func buildServerSideVerificationOptions(from object: JSObject?) -> ServerSideVerificationOptions? {
         guard let object = object else {
             return nil
         }
 
-        let options = GADServerSideVerificationOptions()
+        let options = ServerSideVerificationOptions()
         let userId = object["userId"] as? String
         let customData = object["customData"] as? String
 
@@ -58,7 +58,7 @@ class AdMobHelper {
         }
 
         options.userIdentifier = userId
-        options.customRewardString = customData
+        options.customRewardText = customData
 
         return options
     }
