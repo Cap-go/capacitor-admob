@@ -16,9 +16,10 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
     }
 
     override fun load(ctx: Context?) {
+        val requestContext = ctx ?: return
         clear()
         InterstitialAd.load(
-            ctx!!.optAdRequest(adUnitId),
+            requestContext.optAdRequest(adUnitId),
             object : AdLoadCallback<InterstitialAd> {
                 override fun onAdLoaded(interstitialAd: InterstitialAd) {
                     mAd = interstitialAd
@@ -45,13 +46,13 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
                         }
                     }
                     emit(Generated.Events.INTERSTITIAL_LOAD)
-                    ctx.resolve()
+                    requestContext.resolve()
                 }
 
                 override fun onAdFailedToLoad(loadAdError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
                     clear()
                     emit(Generated.Events.INTERSTITIAL_LOAD_FAIL, loadAdError)
-                    ctx.reject(loadAdError.message)
+                    requestContext.reject(loadAdError)
                 }
             })
     }
@@ -61,7 +62,7 @@ class Interstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
 
     override fun show(ctx: Context?) {
         mAd!!.show(activity)
-        ctx!!.resolve()
+        ctx?.resolve()
     }
 
     private fun clear() {

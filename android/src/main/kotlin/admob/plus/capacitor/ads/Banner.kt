@@ -34,16 +34,17 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
         get() = loaded
 
     override fun load(ctx: Context?) {
+        val requestContext = ctx ?: return
+
         if (adView == null) {
             adView = AdView(activity)
         }
 
         loaded = false
         val adSize = resolveAdSize()
-        val collapsibleAnchor = if (gravity == Gravity.TOP) "top" else "bottom"
 
         adView!!.loadAd(
-            ctx!!.optBannerAdRequest(adUnitId, adSize, collapsibleAnchor),
+            requestContext.optBannerAdRequest(adUnitId, adSize, null),
             object : AdLoadCallback<BannerAd> {
                 override fun onAdLoaded(bannerAd: BannerAd) {
                     loaded = true
@@ -65,13 +66,13 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
                         }
                     }
                     emit(Generated.Events.BANNER_LOAD)
-                    ctx.resolve()
+                    requestContext.resolve()
                 }
 
                 override fun onAdFailedToLoad(loadAdError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
                     loaded = false
                     emit(Generated.Events.BANNER_LOAD_FAIL, loadAdError)
-                    ctx.reject(loadAdError.message)
+                    requestContext.reject(loadAdError)
                 }
             }
         )
@@ -117,7 +118,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx), GenericAd {
         if (parentView == null) {
             parentView = LinearLayout(webView.context)
         }
-        if (wvParentView != null && wvParentView !== parentView) {
+        if (wvParentView !== parentView) {
             if (getParentView(parentView) != null) {
                 parentView!!.removeAllViews()
                 removeFromParentView(parentView)

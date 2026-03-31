@@ -17,6 +17,12 @@ AdMob.start = async () => {
   return result;
 };
 
+const adIsLoaded = AdMob.adIsLoaded.bind(AdMob);
+AdMob.adIsLoaded = (async (...args: Parameters<AdMobPlusPlugin['adIsLoaded']>) => {
+  const result = (await adIsLoaded(...args)) as boolean | { value?: boolean };
+  return typeof result === 'boolean' ? result : result.value === true;
+}) as AdMobPlusPlugin['adIsLoaded'];
+
 class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
   private static allAds: { [s: number]: MobileAd } = {};
   private static idCounter = 0;
@@ -46,8 +52,7 @@ class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
 
   protected async isLoaded() {
     await this.init();
-    const result = (await AdMob.adIsLoaded({ id: this.id })) as boolean | { value?: boolean };
-    return typeof result === 'boolean' ? result : Boolean(result.value);
+    return AdMob.adIsLoaded({ id: this.id });
   }
 
   protected async load() {

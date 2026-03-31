@@ -17,19 +17,20 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
     }
 
     override fun load(ctx: Context?) {
+        val requestContext = ctx ?: return
         clear()
         RewardedAd.load(
-            ctx!!.optAdRequest(adUnitId),
+            requestContext.optAdRequest(adUnitId),
             object : AdLoadCallback<RewardedAd> {
                 override fun onAdFailedToLoad(loadAdError: com.google.android.libraries.ads.mobile.sdk.common.LoadAdError) {
                     clear()
                     emit(Generated.Events.REWARDED_LOAD_FAIL, loadAdError)
-                    ctx.reject(loadAdError)
+                    requestContext.reject(loadAdError)
                 }
 
                 override fun onAdLoaded(rewardedAd: RewardedAd) {
                     mAd = rewardedAd
-                    val ssv = ctx.optServerSideVerificationOptions()
+                    val ssv = requestContext.optServerSideVerificationOptions()
                     if (ssv != null) {
                         mAd!!.setServerSideVerificationOptions(ssv)
                     }
@@ -56,7 +57,7 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
                         }
                     }
                     emit(Generated.Events.REWARDED_LOAD)
-                    ctx.resolve()
+                    requestContext.resolve()
                 }
             })
     }
@@ -66,12 +67,11 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
 
     override fun show(ctx: Context?) {
         mAd!!.show(activity) { rewardItem: RewardItem? ->
-            emit(
-                Generated.Events.REWARDED_REWARD,
-                rewardItem!!
-            )
+            if (rewardItem != null) {
+                emit(Generated.Events.REWARDED_REWARD, rewardItem)
+            }
         }
-        ctx!!.resolve()
+        ctx?.resolve()
     }
 
     private fun clear() {

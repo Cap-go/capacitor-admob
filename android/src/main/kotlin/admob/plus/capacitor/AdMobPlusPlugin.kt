@@ -7,14 +7,7 @@ import admob.plus.capacitor.ads.RewardedInterstitial
 import admob.plus.core.GenericAd
 import admob.plus.core.Helper
 import android.app.Activity
-import android.app.Application
-import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import android.view.WindowInsets
-import android.view.WindowInsetsController
-import androidx.annotation.RequiresApi
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -34,7 +27,6 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         super.load()
         helper = Helper(this)
         ExecuteContext.plugin = this
-        applyAdMobApi35WorkaroundIfNeeded(activity.application)
     }
 
     @PluginMethod
@@ -185,54 +177,20 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
 
     private fun getAppIdFromManifest(): String? {
         return try {
-            val appContext: Context = context.applicationContext
+            val appContext = context.applicationContext
             val applicationInfo = appContext.packageManager.getApplicationInfo(
                 appContext.packageName,
                 PackageManager.GET_META_DATA
             )
-            applicationInfo.metaData?.getString("com.google.android.gms.ads.APPLICATION_ID")
+            val metaData = applicationInfo.metaData ?: return null
+            metaData.getString(ADMOB_APP_ID_KEY)?.takeIf { it.isNotBlank() }
+                ?: metaData.getInt(ADMOB_APP_ID_KEY).takeIf { it != 0 }?.let(appContext::getString)
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun applyAdMobApi35WorkaroundIfNeeded(application: Application) {
-        if (Build.VERSION.SDK_INT < 35) {
-            return
-        }
-
-        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
-
-            override fun onActivityStarted(activity: Activity) {
-                applyApi35WorkaroundToActivity(activity)
-            }
-
-            override fun onActivityResumed(activity: Activity) {
-                applyApi35WorkaroundToActivity(activity)
-            }
-
-            override fun onActivityPaused(activity: Activity) = Unit
-
-            override fun onActivityStopped(activity: Activity) = Unit
-
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-
-            override fun onActivityDestroyed(activity: Activity) = Unit
-        })
-    }
-
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun applyApi35WorkaroundToActivity(activity: Activity) {
-        if (activity.javaClass.name != "com.google.android.gms.ads.AdActivity") {
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            activity.window.insetsController?.let { controller ->
-                controller.hide(WindowInsets.Type.systemBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_DEFAULT
-            }
-        }
+    private companion object {
+        private const val ADMOB_APP_ID_KEY = "com.google.android.gms.ads.APPLICATION_ID"
     }
 }
