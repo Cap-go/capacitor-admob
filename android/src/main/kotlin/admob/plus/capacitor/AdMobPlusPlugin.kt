@@ -14,6 +14,7 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.common.RequestConfiguration
 import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
 import org.json.JSONException
 import org.json.JSONObject
@@ -24,6 +25,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     private var helper: Helper? = null
     @Volatile
     private var mobileAdsInitialized = false
+    private var requestConfigurationOverride: RequestConfiguration? = null
 
     override fun load() {
         super.load()
@@ -62,11 +64,10 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             return
         }
 
-        val initializationConfig = InitializationConfig.Builder(appId)
-            .setRequestConfiguration(MobileAds.getRequestConfiguration())
-            .build()
+        val initializationConfigBuilder = InitializationConfig.Builder(appId)
+        requestConfigurationOverride?.let(initializationConfigBuilder::setRequestConfiguration)
 
-        MobileAds.initialize(context, initializationConfig) {
+        MobileAds.initialize(context, initializationConfigBuilder.build()) {
             mobileAdsInitialized = true
             helper!!.configForTestLab()
             call.resolve()
@@ -85,11 +86,12 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun configRequest(call: PluginCall) {
         val ctx = ExecuteContext(call)
-        if (rejectIfNotInitialized { ctx.reject(it) }) {
-            return
+        val requestConfiguration = ctx.optRequestConfiguration()
+        requestConfigurationOverride = requestConfiguration
+        if (mobileAdsInitialized) {
+            MobileAds.setRequestConfiguration(requestConfiguration)
+            helper!!.configForTestLab()
         }
-        MobileAds.setRequestConfiguration(ctx.optRequestConfiguration())
-        helper!!.configForTestLab()
         ctx.resolve()
     }
 
