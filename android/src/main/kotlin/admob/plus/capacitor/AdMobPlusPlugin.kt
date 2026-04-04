@@ -22,6 +22,8 @@ import org.json.JSONObject
 class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     private val pluginVersion = "8.0.15"
     private var helper: Helper? = null
+    @Volatile
+    private var mobileAdsInitialized = false
 
     override fun load() {
         super.load()
@@ -49,6 +51,11 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
 
     @PluginMethod
     fun start(call: PluginCall) {
+        if (mobileAdsInitialized) {
+            call.resolve()
+            return
+        }
+
         val appId = getAppIdFromManifest()
         if (appId == null) {
             call.reject("AdMob App ID missing")
@@ -60,6 +67,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             .build()
 
         MobileAds.initialize(context, initializationConfig) {
+            mobileAdsInitialized = true
             helper!!.configForTestLab()
             call.resolve()
         }
@@ -68,12 +76,18 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun configure(call: PluginCall) {
         val ctx = ExecuteContext(call)
+        if (rejectIfNotInitialized { ctx.reject(it) }) {
+            return
+        }
         ctx.configure(helper!!)
     }
 
     @PluginMethod
     fun configRequest(call: PluginCall) {
         val ctx = ExecuteContext(call)
+        if (rejectIfNotInitialized { ctx.reject(it) }) {
+            return
+        }
         MobileAds.setRequestConfiguration(ctx.optRequestConfiguration())
         helper!!.configForTestLab()
         ctx.resolve()
@@ -117,6 +131,9 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adLoad(call: PluginCall) {
         val ctx = ExecuteContext(call)
+        if (rejectIfNotInitialized { ctx.reject(it) }) {
+            return
+        }
         bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             ad?.load(ctx)
@@ -126,6 +143,9 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     @PluginMethod
     fun adShow(call: PluginCall) {
         val ctx = ExecuteContext(call)
+        if (rejectIfNotInitialized { ctx.reject(it) }) {
+            return
+        }
         bridge.executeOnMainThread {
             val ad = ctx.optAdOrError() as GenericAd?
             if (ad != null) {
@@ -188,6 +208,14 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun rejectIfNotInitialized(reject: (String) -> Unit): Boolean {
+        if (mobileAdsInitialized) {
+            return false
+        }
+        reject("AdMob is not initialized. Call start() and wait for it to resolve.")
+        return true
     }
 
     private companion object {

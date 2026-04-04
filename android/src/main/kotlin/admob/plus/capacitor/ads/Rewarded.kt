@@ -41,6 +41,7 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
                         }
 
                         override fun onAdFailedToShowFullScreenContent(error: com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError) {
+                            clear()
                             emit(Generated.Events.REWARDED_SHOW_FAIL, error)
                         }
 
@@ -75,8 +76,6 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
     }
 
     private fun clear() {
-        if (mAd != null) {
-            mAd = null
-        }
+        mAd = null
     }
 }
