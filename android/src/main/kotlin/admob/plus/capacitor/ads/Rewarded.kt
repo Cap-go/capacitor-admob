@@ -67,7 +67,11 @@ class Rewarded(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
         get() = mAd != null
 
     override fun show(ctx: Context?) {
-        mAd!!.show(activity) { rewardItem: RewardItem? ->
+        val ad = mAd ?: run {
+            ctx?.reject("ad is not loaded")
+            return
+        }
+        ad.show(activity) { rewardItem: RewardItem? ->
             if (rewardItem != null) {
                 emit(Generated.Events.REWARDED_REWARD, rewardItem)
             }
