@@ -2,6 +2,7 @@ package admob.plus.capacitor.ads
 
 import admob.plus.capacitor.ExecuteContext
 import admob.plus.capacitor.Generated
+import android.util.Log
 import admob.plus.core.Context
 import admob.plus.core.GenericAd
 import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
@@ -74,6 +75,10 @@ class RewardedInterstitial(ctx: ExecuteContext?) : AdBase(ctx), GenericAd {
         ad.show(activity) { rewardItem: RewardItem? ->
             if (rewardItem != null) {
                 emit(Generated.Events.REWARDED_INTERSTITIAL_REWARD, rewardItem)
+            } else {
+                Log.w(
+                    "RewardedInterstitial",
+                    "Reward callback invoked with null rewardItem for adUnitId=$adUnitId")
             }
         }
         ctx?.resolve()
