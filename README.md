@@ -7,6 +7,8 @@
 </div>
 AdMob SDK bridge for Capacitor apps
 
+Android now uses the Google Mobile Ads Next Gen SDK, and iOS is aligned to Google Mobile Ads SDK `13.1.x`, while preserving the existing Capacitor-facing API.
+
 ## Documentation
 
 The most complete doc is available here: https://capgo.app/docs/plugins/admob/

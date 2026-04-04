@@ -6,7 +6,7 @@ import Capacitor
 class BannerAd: NSObject, Ad {
     let id: Int
     let adUnitId: String
-    private var bannerView: GADBannerView?
+    private var bannerView: BannerView?
     private weak var plugin: AdmobPlusPlugin?
     private let position: String
     private var bannerContainer: UIView?
@@ -28,7 +28,7 @@ class BannerAd: NSObject, Ad {
             guard let self = self else { return }
 
             if self.bannerView == nil {
-                let banner = GADBannerView(adSize: GADAdSizeBanner)
+                let banner = BannerView(adSize: AdSizeBanner)
                 banner.adUnitID = self.adUnitId
                 banner.delegate = self
                 banner.rootViewController = self.plugin?.bridge?.viewController
@@ -113,31 +113,31 @@ class BannerAd: NSObject, Ad {
     }
 }
 
-extension BannerAd: GADBannerViewDelegate {
-    func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+extension BannerAd: BannerViewDelegate {
+    func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         plugin?.notifyListeners(Events.bannerLoad, data: ["id": id])
     }
 
-    func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
+    func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         plugin?.notifyListeners(Events.bannerLoadFail, data: [
             "id": id,
             "error": error.localizedDescription
         ])
     }
 
-    func bannerViewDidRecordImpression(_ bannerView: GADBannerView) {
+    func bannerViewDidRecordImpression(_ bannerView: BannerView) {
         plugin?.notifyListeners(Events.bannerImpression, data: ["id": id])
     }
 
-    func bannerViewWillPresentScreen(_ bannerView: GADBannerView) {
+    func bannerViewWillPresentScreen(_ bannerView: BannerView) {
         plugin?.notifyListeners(Events.bannerOpen, data: ["id": id])
     }
 
-    func bannerViewWillDismissScreen(_ bannerView: GADBannerView) {
+    func bannerViewWillDismissScreen(_ bannerView: BannerView) {
         plugin?.notifyListeners(Events.bannerClose, data: ["id": id])
     }
 
-    func bannerViewDidRecordClick(_ bannerView: GADBannerView) {
+    func bannerViewDidRecordClick(_ bannerView: BannerView) {
         plugin?.notifyListeners(Events.bannerClick, data: ["id": id])
     }
 }

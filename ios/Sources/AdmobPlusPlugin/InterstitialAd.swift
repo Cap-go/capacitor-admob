@@ -6,7 +6,7 @@ import Capacitor
 class InterstitialAd: NSObject, Ad {
     let id: Int
     let adUnitId: String
-    private var interstitial: GADInterstitialAd?
+    private var interstitial: GoogleMobileAds.InterstitialAd?
     private weak var plugin: AdmobPlusPlugin?
 
     var isLoaded: Bool {
@@ -23,7 +23,7 @@ class InterstitialAd: NSObject, Ad {
     func load(completion: @escaping (Error?) -> Void) {
         let request = AdMobHelper.buildAdRequest()
 
-        GADInterstitialAd.load(withAdUnitID: adUnitId, request: request) { [weak self] ad, error in
+        GoogleMobileAds.InterstitialAd.load(with: adUnitId, request: request) { [weak self] ad, error in
             guard let self = self else { return }
 
             if let error = error {
@@ -55,7 +55,7 @@ class InterstitialAd: NSObject, Ad {
                 return
             }
 
-            interstitial.present(fromRootViewController: viewController)
+            interstitial.present(from: viewController)
             completion(nil)
         }
     }
@@ -65,27 +65,27 @@ class InterstitialAd: NSObject, Ad {
     }
 }
 
-extension InterstitialAd: GADFullScreenContentDelegate {
-    func adDidRecordImpression(_ ad: GADFullScreenPresentingAd) {
+extension InterstitialAd: FullScreenContentDelegate {
+    func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.interstitialImpression, data: ["id": id])
     }
 
-    func adDidRecordClick(_ ad: GADFullScreenPresentingAd) {
+    func adDidRecordClick(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.adClick, data: ["id": id])
     }
 
-    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         plugin?.notifyListeners(Events.interstitialShowFail, data: [
             "id": id,
             "error": error.localizedDescription
         ])
     }
 
-    func adWillPresentFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.interstitialShow, data: ["id": id])
     }
 
-    func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         plugin?.notifyListeners(Events.interstitialDismiss, data: ["id": id])
         interstitial = nil
     }

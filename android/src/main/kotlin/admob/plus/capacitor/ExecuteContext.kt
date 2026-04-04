@@ -64,7 +64,7 @@ class ExecuteContext internal constructor(private val call: PluginCall) : Contex
         return call.getString(name)
     }
 
-    override fun optStringList(name: String): List<String?> {
+    override fun optStringList(name: String): List<String> {
         return jsonArray2stringList(call.getArray(name))
     }
 
@@ -77,12 +77,9 @@ class ExecuteContext internal constructor(private val call: PluginCall) : Contex
     }
 
     override fun resolve(data: Boolean) {
-        try {
-            call.resolve(JSObject("true"))
-        } catch (e: JSONException) {
-            e.printStackTrace()
-            reject()
-        }
+        val result = JSObject()
+        result.put("value", data)
+        call.resolve(result)
     }
 
     override fun reject(msg: String?) {
