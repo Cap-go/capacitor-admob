@@ -9,13 +9,25 @@ const AdMob = registerPlugin<AdMobPlusPlugin>('AdMobPlus', {
 let started = false;
 let startPromise: ReturnType<typeof AdMob.start> | null = null;
 
-const start = AdMob.start;
-AdMob.start = async () => {
-  startPromise = start();
-  const result = await startPromise;
-  started = true;
-  return result;
+const start = AdMob.start.bind(AdMob);
+const ensureStarted = async () => {
+  if (started) return;
+
+  if (startPromise === null) {
+    startPromise = start()
+      .then((result) => {
+        started = true;
+        return result;
+      })
+      .catch((error) => {
+        startPromise = null;
+        throw error;
+      });
+  }
+
+  return startPromise;
 };
+AdMob.start = ensureStarted as AdMobPlusPlugin['start'];
 
 const adIsLoaded = AdMob.adIsLoaded.bind(AdMob);
 AdMob.adIsLoaded = (async (...args: Parameters<AdMobPlusPlugin['adIsLoaded']>) => {
@@ -74,8 +86,7 @@ class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
     if (this.#created) return;
 
     if (!started) {
-      if (startPromise === null) start();
-      await startPromise;
+      await ensureStarted();
     }
 
     if (this.#init === null) {
