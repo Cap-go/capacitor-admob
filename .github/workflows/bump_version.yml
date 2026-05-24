@@ -8,19 +8,19 @@ on:
     paths-ignore:
       - 'example-app/**'
       - '.github/**'
-  workflow_dispatch:
 
 jobs:
   # Run all tests first before creating any tags
   test:
-    if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     uses: ./.github/workflows/test.yml
 
   # Only bump version and create tag if all tests pass
   bump-version:
     needs: [test]
-    if: ${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     name: "Bump version and create tag"
     steps:
       - name: Setup Node.js
@@ -41,7 +41,6 @@ jobs:
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local pull.rebase false
       - name: Update Doc
         run: bun run docgen
       - name: Add doc to github
