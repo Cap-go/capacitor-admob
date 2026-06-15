@@ -1,3 +1,5 @@
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { Capacitor } from '@capacitor/core';
 import { AdMob, BannerAd, InterstitialAd, RewardedAd } from '@capgo/capacitor-admob';
 
 const ui = {
@@ -418,3 +420,9 @@ ui.clearLog.addEventListener('click', () => {
 
 registerEventListeners();
 log('AdMob playground ready. Start the SDK before requesting ads.');
+
+if (Capacitor.isNativePlatform()) {
+  CapacitorUpdater.notifyAppReady().catch((error) => {
+    console.error('Capgo notifyAppReady failed', error);
+  });
+}

@@ -1,0 +1,22 @@
+{
+	"appId": "app.capgo.admob",
+	"appName": "Admob Example",
+	"webDir": "dist",
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false
+		},
+		"CapacitorUpdater": {
+			"appId": "app.capgo.admob",
+			"autoUpdate": true,
+			"autoSplashscreen": true,
+			"directUpdate": "always",
+			"version": "1.0.0"
+		}
+	},
+	"packageClassList": [
+		"AdmobPlusPlugin",
+		"CapacitorUpdaterPlugin",
+		"SplashScreenPlugin"
+	]
+}
