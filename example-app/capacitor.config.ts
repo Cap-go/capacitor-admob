@@ -4,7 +4,7 @@ import pkg from './package.json';
 
 const config: CapacitorConfig = {
   appId: 'app.capgo.admob',
-  appName: 'Admob Example',
+  appName: '@capgo/capacitor-admob',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
