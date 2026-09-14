@@ -52,6 +52,11 @@ case "$platform" in
       bunx cap add ios
     fi
     bunx cap sync ios
+    while IFS= read -r -d '' package_swift; do
+      sed -i '' \
+        's/from: "8\.0\.0"/from: "9.0.0-alpha.6"/g; s/exact: "8\.3\.1"/exact: "9.0.0-alpha.6"/g' \
+        "$package_swift"
+    done < <(find "$test_app" -name Package.swift -print0)
     rm -rf "$HOME/Library/Caches/org.swift.swiftpm/artifacts"/https___github_com_ionic_team_capacitor_swift_pm_releases_download_*
     xcodebuild \
       -project ios/App/App.xcodeproj \
