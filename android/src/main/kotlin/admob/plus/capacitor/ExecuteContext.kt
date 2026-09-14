@@ -37,13 +37,7 @@ class ExecuteContext internal constructor(private val call: PluginCall) : Contex
         get() = plugin!!.getActivity()
 
     override fun has(name: String): Boolean {
-        return call.getString(name) != null ||
-            call.getInt(name) != null ||
-            call.getBoolean(name) != null ||
-            call.getDouble(name) != null ||
-            call.getFloat(name) != null ||
-            call.getObject(name) != null ||
-            call.getArray(name) != null
+        return call.data.has(name)
     }
 
     override fun opt(name: String): Any? {
