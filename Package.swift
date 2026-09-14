@@ -18,7 +18,6 @@ let package = Package(
             name: "AdmobPlusPlugin",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "GoogleMobileAds", package: "swift-package-manager-google-mobile-ads")
             ],
             path: "ios/Sources/AdmobPlusPlugin"),
