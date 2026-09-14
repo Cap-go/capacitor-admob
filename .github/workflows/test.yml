@@ -19,8 +19,8 @@ jobs:
       - name: Enforce capacitor-swift-pm version
         run: |
           set -euo pipefail
-          if ! grep -Eq 'https://github.com/ionic-team/capacitor-swift-pm\.git"[[:space:]]*,[[:space:]]*from:[[:space:]]*"8\.0\.0"' Package.swift; then
-            echo "Expected capacitor-swift-pm to be pinned to 8.0.0 in Package.swift"
+          if ! grep -Eq 'https://github.com/ionic-team/capacitor-swift-pm\.git"[[:space:]]*,[[:space:]]*from:[[:space:]]*"(8\.0\.0|9\.0\.0-alpha\.6)"' Package.swift; then
+            echo "Expected capacitor-swift-pm to be pinned to 8.0.0 or 9.0.0-alpha.6 in Package.swift"
             exit 1
           fi
   build_android:
