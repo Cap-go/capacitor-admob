@@ -32,14 +32,14 @@ class ConsentHelper(private val plugin: AdMobPlusPlugin) {
             }
 
             if (data.has("debugGeography")) {
-                debugSettingsBuilder.setDebugGeography(call.getInt("debugGeography"))
+                debugSettingsBuilder.setDebugGeography(data.getInt("debugGeography"))
             }
 
             val paramsBuilder = ConsentRequestParameters.Builder()
                 .setConsentDebugSettings(debugSettingsBuilder.build())
 
             if (data.has("tagForUnderAgeOfConsent")) {
-                paramsBuilder.setTagForUnderAgeOfConsent(call.getBoolean("tagForUnderAgeOfConsent"))
+                paramsBuilder.setTagForUnderAgeOfConsent(data.getBoolean("tagForUnderAgeOfConsent"))
             }
 
             consentInfo.requestConsentInfoUpdate(
