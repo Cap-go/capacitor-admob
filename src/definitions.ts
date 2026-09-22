@@ -1,5 +1,7 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
+import type { AdMobPlusEventName } from './events';
+
 /**
  * Maximum ad content rating enum used to restrict ads based on content rating.
  *
@@ -46,6 +48,98 @@ export type RequestConfig = {
   tagForUnderAgeOfConsent?: boolean | null;
   /** Array of test device IDs */
   testDeviceIds?: string[];
+};
+
+/**
+ * Consent status from Google's User Messaging Platform (UMP).
+ *
+ * @see https://developers.google.com/admob/ump/android/reference/com/google/android/ump/ConsentInformation.ConsentStatus
+ * @since 8.2.0
+ */
+export enum AdmobConsentStatus {
+  /** User consent not required. */
+  NOT_REQUIRED = 'NOT_REQUIRED',
+  /** User consent already obtained. */
+  OBTAINED = 'OBTAINED',
+  /** User consent required but not yet obtained. */
+  REQUIRED = 'REQUIRED',
+  /** Unknown consent status. Call requestConsentInfo() to update it. */
+  UNKNOWN = 'UNKNOWN',
+}
+
+/**
+ * Privacy options requirement status from UMP.
+ *
+ * @see https://developers.google.com/admob/ump/android/reference/com/google/android/ump/ConsentInformation.PrivacyOptionsRequirementStatus
+ * @since 8.2.0
+ */
+export enum PrivacyOptionsRequirementStatus {
+  /** Privacy options entry point is not required. */
+  NOT_REQUIRED = 'NOT_REQUIRED',
+  /** Privacy options entry point is required. */
+  REQUIRED = 'REQUIRED',
+  /** Privacy options requirement status is unknown. */
+  UNKNOWN = 'UNKNOWN',
+}
+
+/**
+ * Debug geography for testing UMP consent flows locally.
+ *
+ * @see https://developers.google.com/admob/ump/android/reference/com/google/android/ump/ConsentDebugSettings.DebugGeography
+ * @since 8.2.0
+ */
+export enum AdmobConsentDebugGeography {
+  /** Debug geography disabled. */
+  DISABLED = 0,
+  /** Geography appears as in EEA for debug devices. */
+  EEA = 1,
+  /**
+   * Geography appears as not in EEA for debug devices.
+   *
+   * @deprecated Use OTHER instead.
+   */
+  NOT_EEA = 2,
+  /** Geography appears as in a regulated US state for debug devices. */
+  US = 3,
+  /** Geography appears as OTHER for debug devices. */
+  OTHER = 4,
+}
+
+/**
+ * Options for requesting UMP consent information.
+ *
+ * @since 8.2.0
+ */
+export type AdmobConsentRequestOptions = {
+  /** Sets the debug geography to test consent locally. */
+  debugGeography?: AdmobConsentDebugGeography;
+  /**
+   * Test device IDs to allow for consent debugging.
+   * On iOS, the ID may change if you uninstall and reinstall the app.
+   */
+  testDeviceIdentifiers?: string[];
+  /**
+   * When true, tags the user as under the age of consent for UMP requests.
+   *
+   * @default false
+   */
+  tagForUnderAgeOfConsent?: boolean;
+};
+
+/**
+ * Consent information returned by UMP.
+ *
+ * @since 8.2.0
+ */
+export type AdmobConsentInfo = {
+  /** The consent status of the user. */
+  status: AdmobConsentStatus;
+  /** If true, a consent form is available. */
+  isConsentFormAvailable?: boolean;
+  /** If true, an ad request can be made. */
+  canRequestAds: boolean;
+  /** Privacy options requirement status of the user. */
+  privacyOptionsRequirementStatus: PrivacyOptionsRequirementStatus;
 };
 
 /**
@@ -163,6 +257,56 @@ export interface AdMobPlusPlugin {
    * ```
    */
   configRequest(requestConfig: RequestConfig): Promise<void>;
+
+  /**
+   * Request user consent information from Google's User Messaging Platform (UMP).
+   *
+   * Call this after `start()` and before loading ads for users in the EEA/UK.
+   *
+   * @param options - Optional consent request options for debugging and tagging
+   * @returns Promise that resolves with the current consent information
+   * @throws Error if the consent info request fails
+   * @since 8.2.0
+   * @example
+   * ```typescript
+   * const consentInfo = await AdMob.requestConsentInfo();
+   * if (consentInfo.isConsentFormAvailable && consentInfo.status === AdmobConsentStatus.REQUIRED) {
+   *   await AdMob.showConsentForm();
+   * }
+   * ```
+   */
+  requestConsentInfo(options?: AdmobConsentRequestOptions): Promise<AdmobConsentInfo>;
+
+  /**
+   * Shows the Google user consent form rendered from your GDPR message configuration.
+   *
+   * @returns Promise that resolves with updated consent information after the form is dismissed
+   * @throws Error if the consent form cannot be shown
+   * @since 8.2.0
+   * @example
+   * ```typescript
+   * const consentInfo = await AdMob.showConsentForm();
+   * if (!consentInfo.canRequestAds) {
+   *   return;
+   * }
+   * ```
+   */
+  showConsentForm(): Promise<AdmobConsentInfo>;
+
+  /**
+   * Shows the Google privacy options form rendered from your GDPR message configuration.
+   *
+   * Use this when your privacy message requires an in-app entry point for users to manage choices.
+   *
+   * @returns Promise that resolves when the form is dismissed
+   * @throws Error if the privacy options form cannot be shown
+   * @since 8.2.0
+   * @example
+   * ```typescript
+   * await AdMob.showPrivacyOptionsForm();
+   * ```
+   */
+  showPrivacyOptionsForm(): Promise<void>;
 
   /**
    * Create a new ad instance.
@@ -291,7 +435,7 @@ export interface AdMobPlusPlugin {
    * ```
    */
   addListener(
-    eventName: string,
+    eventName: AdMobPlusEventName,
     listenerFunc: (event: any) => void,
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 

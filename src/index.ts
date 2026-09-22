@@ -189,4 +189,5 @@ class RewardedInterstitialAd extends MobileAd<RewardedInterstitialAdOptions> {
 }
 
 export * from './definitions';
+export * from './events';
 export { AdMob, BannerAd, InterstitialAd, RewardedAd, RewardedInterstitialAd };
