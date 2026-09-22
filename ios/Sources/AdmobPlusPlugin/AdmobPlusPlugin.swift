@@ -12,6 +12,9 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "configure", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "configRequest", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestConsentInfo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showConsentForm", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showPrivacyOptionsForm", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "adCreate", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "adIsLoaded", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "adLoad", returnType: CAPPluginReturnPromise),
@@ -24,6 +27,11 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var nextAdId = 1
     private let adManager = AdManager.shared
+    private lazy var consentExecutor: ConsentExecutor = {
+        let executor = ConsentExecutor()
+        executor.plugin = self
+        return executor
+    }()
 
     @objc func start(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
@@ -46,6 +54,33 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         call.resolve()
+    }
+
+    @objc func requestConsentInfo(_ call: CAPPluginCall) {
+        let debugGeography = call.getInt("debugGeography") ?? 0
+        let testDeviceIdentifiers = call.getArray("testDeviceIdentifiers", String.self) ?? []
+        let tagForUnderAgeOfConsent = call.getBool("tagForUnderAgeOfConsent") ?? false
+
+        DispatchQueue.main.async {
+            self.consentExecutor.requestConsentInfo(
+                call,
+                debugGeography: debugGeography,
+                testDeviceIdentifiers: testDeviceIdentifiers,
+                tagForUnderAgeOfConsent: tagForUnderAgeOfConsent
+            )
+        }
+    }
+
+    @objc func showConsentForm(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.consentExecutor.showConsentForm(call)
+        }
+    }
+
+    @objc func showPrivacyOptionsForm(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.consentExecutor.showPrivacyOptionsForm(call)
+        }
     }
 
     @objc func configRequest(_ call: CAPPluginCall) {

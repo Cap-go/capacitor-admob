@@ -23,6 +23,7 @@ import org.json.JSONObject
 class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     private val pluginVersion = "8.0.15"
     private var helper: Helper? = null
+    private var consentHelper: ConsentHelper? = null
     @Volatile
     private var mobileAdsInitialized = false
     private var requestConfigurationOverride: RequestConfiguration? = null
@@ -30,6 +31,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     override fun load() {
         super.load()
         helper = Helper(this)
+        consentHelper = ConsentHelper(this)
         ExecuteContext.plugin = this
     }
 
@@ -81,6 +83,21 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             return
         }
         ctx.configure(helper!!)
+    }
+
+    @PluginMethod
+    fun requestConsentInfo(call: PluginCall) {
+        consentHelper?.requestConsentInfo(call)
+    }
+
+    @PluginMethod
+    fun showConsentForm(call: PluginCall) {
+        consentHelper?.showConsentForm(call)
+    }
+
+    @PluginMethod
+    fun showPrivacyOptionsForm(call: PluginCall) {
+        consentHelper?.showPrivacyOptionsForm(call)
     }
 
     @PluginMethod

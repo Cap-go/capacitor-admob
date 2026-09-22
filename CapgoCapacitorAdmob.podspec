@@ -14,5 +14,6 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '15.0'
   s.dependency 'Capacitor'
   s.dependency 'Google-Mobile-Ads-SDK', '~> 13.1'
+  s.dependency 'GoogleUserMessagingPlatform', '~> 3.1'
   s.swift_version = '5.1'
 end
