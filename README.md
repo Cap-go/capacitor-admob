@@ -54,16 +54,14 @@ import { AdMob, AdmobConsentStatus } from '@capgo/capacitor-admob';
 
 await AdMob.start();
 
-const consentInfo = await AdMob.requestConsentInfo();
+let consentInfo = await AdMob.requestConsentInfo();
 if (consentInfo.isConsentFormAvailable && consentInfo.status === AdmobConsentStatus.REQUIRED) {
-  await AdMob.showConsentForm();
+  consentInfo = await AdMob.showConsentForm();
 }
 
-if (!consentInfo.canRequestAds) {
-  return;
+if (consentInfo.canRequestAds) {
+  // Load ads only after consent allows ad requests.
 }
-
-// Load ads only after consent allows ad requests.
 ```
 
 To let users manage privacy choices later, call `showPrivacyOptionsForm()` from a settings screen when `privacyOptionsRequirementStatus` is `REQUIRED`.
