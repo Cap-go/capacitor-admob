@@ -17,8 +17,8 @@ class ConsentExecutor: NSObject {
         parameters.isTaggedForUnderAgeOfConsent = tagForUnderAgeOfConsent
 
         ConsentInformation.shared.requestConsentInfoUpdate(with: parameters) { error in
-            if error != nil {
-                call.reject("Request consent info failed")
+            if let error = error {
+                call.reject(error.localizedDescription)
             } else {
                 call.resolve(self.buildConsentInfo(includeFormAvailability: true))
             }
@@ -59,7 +59,7 @@ class ConsentExecutor: NSObject {
                 try await ConsentForm.loadAndPresentIfRequired(from: rootViewController)
                 call.resolve(self.buildConsentInfo(includeFormAvailability: false))
             } catch {
-                call.reject("Request consent info failed")
+                call.reject("Error when show consent form: \(error.localizedDescription)")
             }
         }
     }
