@@ -43,15 +43,18 @@ export const AdMobPlusEvents = {
 
 export type AdMobPlusEventName = (typeof AdMobPlusEvents)[keyof typeof AdMobPlusEvents];
 
-/** Event payload always includes the native ad instance id (`adId`). */
+/** Event payload always includes the native ad instance id (`adId`). iOS also emits legacy `id`. */
 export type AdMobPlusAdIdPayload = {
   adId: number;
+  id?: number;
 };
 
 /** Load and fullscreen show failure payloads from native `LoadAdError` / `FullScreenContentError`. */
 export type AdMobPlusAdFailurePayload = AdMobPlusAdIdPayload & {
   code: number;
   message: string;
+  /** Legacy iOS failure field; same string as `message` when present. */
+  error?: string;
 };
 
 /** Reward callbacks include the earned reward plus `adId`. */
