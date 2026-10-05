@@ -29,10 +29,7 @@ class RewardedInterstitialAd: NSObject, Ad {
             guard let self = self else { return }
 
             if let error = error {
-                self.plugin?.notifyListeners(Events.rewardedInterstitialLoadFail, data: [
-                    "id": self.id,
-                    "error": error.localizedDescription
-                ])
+                self.plugin?.notifyAdFailureListeners(Events.rewardedInterstitialLoadFail, adId: self.id, error: error)
                 completion(error)
                 return
             }
@@ -41,7 +38,7 @@ class RewardedInterstitialAd: NSObject, Ad {
             self.rewardedInterstitialAd?.serverSideVerificationOptions = self.serverSideVerificationOptions
             self.rewardedInterstitialAd?.fullScreenContentDelegate = self
 
-            self.plugin?.notifyListeners(Events.rewardedInterstitialLoad, data: ["id": self.id])
+            self.plugin?.notifyAdListeners(Events.rewardedInterstitialLoad, adId: self.id)
             completion(nil)
         }
     }
@@ -61,13 +58,12 @@ class RewardedInterstitialAd: NSObject, Ad {
             rewardedInterstitialAd.present(from: viewController) { [weak self] in
                 guard let self = self else { return }
                 let reward = rewardedInterstitialAd.adReward
-                self.plugin?.notifyListeners(Events.rewardedInterstitialReward, data: [
-                    "id": self.id,
-                    "reward": [
-                        "amount": reward.amount.intValue,
-                        "type": reward.type
-                    ]
-                ])
+                self.plugin?.notifyAdRewardListeners(
+                    Events.rewardedInterstitialReward,
+                    adId: self.id,
+                    amount: reward.amount.intValue,
+                    type: reward.type
+                )
             }
             completion(nil)
         }
@@ -80,26 +76,23 @@ class RewardedInterstitialAd: NSObject, Ad {
 
 extension RewardedInterstitialAd: FullScreenContentDelegate {
     func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
-        plugin?.notifyListeners(Events.rewardedInterstitialImpression, data: ["id": id])
+        plugin?.notifyAdListeners(Events.rewardedInterstitialImpression, adId: id)
     }
 
     func adDidRecordClick(_ ad: FullScreenPresentingAd) {
-        plugin?.notifyListeners(Events.adClick, data: ["id": id])
+        plugin?.notifyAdListeners(Events.adClick, adId: id)
     }
 
     func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        plugin?.notifyListeners(Events.rewardedInterstitialShowFail, data: [
-            "id": id,
-            "error": error.localizedDescription
-        ])
+        plugin?.notifyAdFailureListeners(Events.rewardedInterstitialShowFail, adId: id, error: error)
     }
 
     func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
-        plugin?.notifyListeners(Events.rewardedInterstitialShow, data: ["id": id])
+        plugin?.notifyAdListeners(Events.rewardedInterstitialShow, adId: id)
     }
 
     func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
-        plugin?.notifyListeners(Events.rewardedInterstitialDismiss, data: ["id": id])
+        plugin?.notifyAdListeners(Events.rewardedInterstitialDismiss, adId: id)
         rewardedInterstitialAd = nil
     }
 }

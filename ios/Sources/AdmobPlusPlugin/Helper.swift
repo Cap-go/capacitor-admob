@@ -64,6 +64,31 @@ class AdMobHelper {
     }
 }
 
+extension AdmobPlusPlugin {
+    func notifyAdListeners(_ eventName: String, adId: Int) {
+        notifyListeners(eventName, data: ["adId": adId])
+    }
+
+    func notifyAdFailureListeners(_ eventName: String, adId: Int, error: Error) {
+        let nsError = error as NSError
+        notifyListeners(eventName, data: [
+            "adId": adId,
+            "code": nsError.code,
+            "message": nsError.localizedDescription,
+        ])
+    }
+
+    func notifyAdRewardListeners(_ eventName: String, adId: Int, amount: Int, type: String) {
+        notifyListeners(eventName, data: [
+            "adId": adId,
+            "reward": [
+                "amount": amount,
+                "type": type,
+            ],
+        ])
+    }
+}
+
 enum AdMobError: Error {
     case adNotFound
     case adNotLoaded

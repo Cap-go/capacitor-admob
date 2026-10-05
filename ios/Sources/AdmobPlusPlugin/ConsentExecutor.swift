@@ -48,12 +48,6 @@ class ConsentExecutor: NSObject {
             return
         }
 
-        let formStatus = ConsentInformation.shared.formStatus
-        if formStatus != FormStatus.available {
-            call.reject("Consent Form not available")
-            return
-        }
-
         Task { @MainActor in
             do {
                 try await ConsentForm.loadAndPresentIfRequired(from: rootViewController)

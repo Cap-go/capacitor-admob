@@ -87,7 +87,9 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
 
     @PluginMethod
     fun requestConsentInfo(call: PluginCall) {
-        consentHelper?.requestConsentInfo(call)
+        bridge.executeOnMainThread {
+            consentHelper?.requestConsentInfo(call)
+        }
     }
 
     @PluginMethod
