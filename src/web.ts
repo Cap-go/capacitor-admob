@@ -3,12 +3,12 @@ import type { PluginListenerHandle } from '@capacitor/core';
 import { WebPlugin } from '@capacitor/core';
 
 import type { AdMobPlusPlugin, AdmobConsentInfo } from './definitions';
-import type { AdMobPlusEventName } from './events';
+import type { AdMobPlusEventName, AdMobPlusEventPayloadMap } from './events';
 
 export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
-  addListener(
-    eventName: AdMobPlusEventName,
-    listenerFunc: (...args: any[]) => void,
+  addListener<E extends AdMobPlusEventName>(
+    eventName: E,
+    listenerFunc: (event: AdMobPlusEventPayloadMap[E]) => void,
   ): Promise<PluginListenerHandle> & PluginListenerHandle {
     return super.addListener(eventName, listenerFunc) as Promise<PluginListenerHandle> & PluginListenerHandle;
   }

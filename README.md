@@ -85,7 +85,7 @@ For local testing on a real device, pass `debugGeography` and `testDeviceIdentif
 * [`adHide(...)`](#adhide)
 * [`trackingAuthorizationStatus()`](#trackingauthorizationstatus)
 * [`requestTrackingAuthorization()`](#requesttrackingauthorization)
-* [`addListener(AdMobPlusEventName, ...)`](#addlisteneradmobpluseventname-)
+* [`addListener(E, ...)`](#addlistenere-)
 * [`getPluginVersion()`](#getpluginversion)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
@@ -313,18 +313,18 @@ Request tracking authorization from the user (iOS only).
 --------------------
 
 
-### addListener(AdMobPlusEventName, ...)
+### addListener(E, ...)
 
 ```typescript
-addListener(eventName: AdMobPlusEventName, listenerFunc: (event: any) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<E extends AdMobPlusEventName>(eventName: E, listenerFunc: (event: AdMobPlusEventPayloadMap[E]) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
 ```
 
 Add a listener for ad events.
 
-| Param              | Type                                                              | Description                                  |
-| ------------------ | ----------------------------------------------------------------- | -------------------------------------------- |
-| **`eventName`**    | <code><a href="#admobpluseventname">AdMobPlusEventName</a></code> | - The name of the event to listen for        |
-| **`listenerFunc`** | <code>(event: any) =&gt; void</code>                              | - The function to call when the event occurs |
+| Param              | Type                                                         | Description                                  |
+| ------------------ | ------------------------------------------------------------ | -------------------------------------------- |
+| **`eventName`**    | <code>E</code>                                               | - The name of the event to listen for        |
+| **`listenerFunc`** | <code>(event: AdMobPlusEventPayloadMap[E]) =&gt; void</code> | - The function to call when the event occurs |
 
 **Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
 
@@ -399,6 +399,34 @@ Base options for mobile ads.
 #### AdMobPlusEventName
 
 <code>(typeof AdMobPlusEvents)[keyof typeof AdMobPlusEvents]</code>
+
+
+#### AdMobPlusEventPayloadMap
+
+Maps each {@link <a href="#admobpluseventname">AdMobPlusEventName</a>} to the payload shape emitted from native code.
+
+<code>{ [AdMobPlusEvents.AdClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.AdReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.AdShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerClose]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerOpen]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerSizeChange]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.InterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedInterstitialReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedInterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; }</code>
+
+
+#### AdMobPlusAdIdPayload
+
+Event payload always includes the native ad instance id (`adId`).
+
+<code>{ adId: number; }</code>
+
+
+#### AdMobPlusAdFailurePayload
+
+Load and fullscreen show failure payloads from native `LoadAdError` / `FullScreenContentError`.
+
+<code><a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a> & { code: number; message: string; }</code>
+
+
+#### AdMobPlusAdRewardPayload
+
+Reward callbacks include the earned reward plus `adId`.
+
+<code><a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a> & { reward: { amount: number; type: string; }; }</code>
 
 
 ### Enums

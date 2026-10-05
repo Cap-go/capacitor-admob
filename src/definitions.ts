@@ -1,6 +1,6 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 
-import type { AdMobPlusEventName } from './events';
+import type { AdMobPlusEventName, AdMobPlusEventPayloadMap } from './events';
 
 /**
  * Maximum ad content rating enum used to restrict ads based on content rating.
@@ -434,9 +434,9 @@ export interface AdMobPlusPlugin {
    * await listener.remove();
    * ```
    */
-  addListener(
-    eventName: AdMobPlusEventName,
-    listenerFunc: (event: any) => void,
+  addListener<E extends AdMobPlusEventName>(
+    eventName: E,
+    listenerFunc: (event: AdMobPlusEventPayloadMap[E]) => void,
   ): Promise<PluginListenerHandle> & PluginListenerHandle;
 
   /**
