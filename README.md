@@ -17,7 +17,7 @@ Show Google AdMob ads in your Capacitor app on iOS and Android: banner, intersti
 
 ## Key features
 
-- **Four ad formats**: `BannerAd`, `InterstitialAd`, `RewardedAd` and `RewardedInterstitialAd` classes with load, show and hide.
+- **Four ad formats**: `BannerAd`, `InterstitialAd`, `RewardedAd` and `RewardedInterstitialAd` classes with load and show, plus `hide()` on `BannerAd`.
 - **Ad lifecycle**: `adCreate()`, `adLoad()`, `adIsLoaded()`, `adShow()` and `adHide()` give you full control over each ad instance.
 - **SDK setup**: `start()` initializes AdMob, `configure()` sets app-wide options and `configRequest()` sets request options.
 - **App Tracking Transparency**: `trackingAuthorizationStatus()` and `requestTrackingAuthorization()` handle the iOS tracking prompt.
