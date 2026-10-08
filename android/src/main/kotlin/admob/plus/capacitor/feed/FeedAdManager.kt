@@ -193,7 +193,30 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
+                    maybeWriteCiBannerOverlaySnapshot(host)
                 }
+            } else if (
+                visible &&
+                loaded &&
+                format == FeedAdFormat.BANNER &&
+                !ciBannerSnapshotWritten &&
+                w > 40 &&
+                h > 20
+            ) {
+                maybeWriteCiBannerOverlaySnapshot(host)
+            }
+        }
+    }
+
+    private fun maybeWriteCiBannerOverlaySnapshot(host: View) {
+        val isDebuggable =
+            (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+            return
+        }
+        host.post {
+            if (!ciBannerSnapshotWritten) {
+                writeCiBannerOverlaySnapshotNow(host)
             }
         }
     }
@@ -205,17 +228,28 @@ private class FeedAdEntry(
             return
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
-        mainHandler.postDelayed(
-            {
-                if (!ciBannerSnapshotWritten) {
-                    adHost?.let { writeCiBannerOverlaySnapshotNow(it) }
-                }
-            },
-            2_500L,
-        )
+        adHost?.let { maybeWriteCiBannerOverlaySnapshot(it) }
+        val delaysMs = longArrayOf(150L, 400L, 900L, 1_600L, 2_400L)
+        for (delayMs in delaysMs) {
+            mainHandler.postDelayed(
+                {
+                    if (!ciBannerSnapshotWritten) {
+                        adHost?.let { writeCiBannerOverlaySnapshotNow(it) }
+                    }
+                },
+                delayMs,
+            )
+        }
     }
 
     private fun writeCiBannerOverlaySnapshotNow(host: View) {
+        if (host.width < 20 || host.height < 10) {
+            Log.i(
+                FEED_SCREENSHOT_LOG_TAG,
+                "ci_banner_snapshot_failed message=host_not_laid_out w=${host.width} h=${host.height}",
+            )
+            return
+        }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
         var bitmap: Bitmap? = null
         try {

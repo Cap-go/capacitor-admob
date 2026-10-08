@@ -206,8 +206,11 @@ capture_banner_in_foreground() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if ! assert_app_in_foreground 2>/dev/null; then
-      adb shell am start -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
-      sleep 2
+      if (( i % 4 == 0 )); then
+        ensure_foreground || true
+      else
+        sleep 0.5
+      fi
       continue
     fi
     dismiss_blocking_dialogs
@@ -479,13 +482,13 @@ if ! wait_for_feed_load banner 40; then
   exit 1
 fi
 
-sleep 1
-scroll_webview_to_feed_section || true
+ensure_foreground
+wake_device
 
 banner_capture_ok=false
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
 overlay_ok=false
-for _quick in $(seq 1 35); do
+for _quick in $(seq 1 60); do
   if pull_ci_banner_snapshot && validate_overlay_banner_png "$banner_raw"; then
     cp "$banner_raw" "$overlay_proof"
     overlay_ok=true
@@ -502,12 +505,16 @@ for _quick in $(seq 1 35); do
       fi
     fi
   else
-    adb shell am start -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+    if (( _quick % 5 == 0 )); then
+      ensure_foreground || true
+    fi
   fi
-  sleep 1
+  sleep 0.5
 done
 
-if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 20; then
+scroll_webview_to_feed_section || true
+
+if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 30; then
   banner_capture_ok=true
 fi
 
@@ -518,13 +525,15 @@ if [[ "$banner_capture_ok" != true ]]; then
 fi
 
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-  echo "banner_loaded=1" > "$banner_status_file"
+  echo "banner_loaded=1" >> "$banner_status_file"
 fi
 
 if [[ "$overlay_ok" != true ]] || [[ ! -f "$overlay_proof" ]] || ! validate_overlay_banner_png "$overlay_proof"; then
   echo "Missing validated banner overlay proof PNG (Google test ad pixels)"
   exit 1
 fi
+
+echo "banner_overlay_snapshot=1" > "$banner_status_file"
 
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
