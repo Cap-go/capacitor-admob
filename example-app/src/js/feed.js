@@ -35,6 +35,22 @@ const samplePosts = [
 
 const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
 
+if (ciFeedDemo) {
+  const focusFeedSectionOnly = () => {
+    document.querySelector('main header')?.style.setProperty('display', 'none');
+    document.querySelectorAll('main section.card').forEach((section) => {
+      if (section.id !== 'feedSection') {
+        section.style.display = 'none';
+      }
+    });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', focusFeedSectionOnly, { once: true });
+  } else {
+    focusFeedSectionOnly();
+  }
+}
+
 const buildFeed = () => {
   feedList.innerHTML = '';
   let adIndex = 0;
