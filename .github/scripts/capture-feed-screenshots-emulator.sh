@@ -169,7 +169,7 @@ wait_for_banner_slot_ready() {
     if (( i % 10 == 0 )); then
       maybe_recover_foreground || true
     fi
-    if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|overlay_visible id=.* format=banner" | grep -q .; then
+    if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
       return 0
     fi
     sleep 2
@@ -214,7 +214,6 @@ scroll_webview_to_feed_section() {
 capture_screenshot() {
   local outfile="$1"
   ensure_foreground
-  scroll_webview_to_feed_section
   assert_example_app_on_screen
   sleep 1
   adb exec-out screencap -p > "$outfile"
@@ -255,7 +254,6 @@ inspect_png_not_launcher() {
 assert_banner_screenshot_content() {
   local png="$1"
   local dump
-  scroll_webview_to_feed_section
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -q 'SDK Setup' && ! echo "$dump" | grep -qE 'In-Feed|Sponsored'; then
     echo "Banner screenshot would show the SDK setup screen, not section 5"

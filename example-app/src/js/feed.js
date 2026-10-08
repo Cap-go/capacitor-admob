@@ -142,6 +142,7 @@ const attachFeedAds = async () => {
       scrollFeedSectionIntoView();
       const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
       bannerSlot?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      await new Promise((resolve) => window.setTimeout(resolve, 1500));
       console.info('CAPGO_CI_BANNER_SLOT_READY');
       return;
     }
