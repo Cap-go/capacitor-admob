@@ -10,6 +10,7 @@ const feedLog = document.getElementById('feedLog');
 const feedList = document.getElementById('feedList');
 
 const feedAds = [];
+let feedAttachInProgress = false;
 
 const logFeed = (message, details) => {
   const stamp = new Date().toISOString().split('T')[1].replace('Z', '');
@@ -66,10 +67,18 @@ const attachFeedAds = async () => {
     return;
   }
 
-  await AdMob.start();
+  if (feedAds.length > 0 || feedAttachInProgress) {
+    logFeed('Feed ads already attached or attach in progress');
+    return;
+  }
 
-  const slots = [...feedList.querySelectorAll('.feed-ad-slot')];
-  for (const slot of slots) {
+  feedAttachInProgress = true;
+
+  try {
+    await AdMob.start();
+
+    const slots = [...feedList.querySelectorAll('.feed-ad-slot')];
+    for (const slot of slots) {
     const placeholder = slot.querySelector('.feed-ad-placeholder');
     if (!placeholder) continue;
 
@@ -100,6 +109,9 @@ const attachFeedAds = async () => {
     } catch (error) {
       logFeed(`Failed to attach ${positionKey}`, error);
     }
+    }
+  } finally {
+    feedAttachInProgress = false;
   }
 };
 

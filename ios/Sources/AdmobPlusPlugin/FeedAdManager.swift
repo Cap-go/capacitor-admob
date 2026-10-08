@@ -5,6 +5,13 @@ import Capacitor
 
 private let minAutoRefreshMs = 30_000
 
+private final class PassthroughView: UIView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        return hit === self ? nil : hit
+    }
+}
+
 final class FeedAdManager {
     static let shared = FeedAdManager()
     private var entries: [Int: FeedAdEntry] = [:]
@@ -170,7 +177,7 @@ private final class FeedAdEntry: NSObject {
         if let overlayContainer = overlayContainer {
             return overlayContainer
         }
-        let container = UIView(frame: rootView.bounds)
+        let container = PassthroughView(frame: rootView.bounds)
         container.backgroundColor = .clear
         container.isUserInteractionEnabled = true
         container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -220,6 +227,7 @@ private final class FeedAdEntry: NSObject {
               let webView = plugin?.bridge?.webView else { return }
 
         nativeAdView?.removeFromSuperview()
+        nativeAdView = nil
         let adView = buildNativeAdView(for: nativeAd)
         let container = ensureOverlayContainer(on: root, below: webView)
         container.addSubview(adView)

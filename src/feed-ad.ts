@@ -17,6 +17,7 @@ type BoundsListener = () => void;
  */
 export class FeedAd {
   private id: number | null = null;
+  private createPromise: Promise<number> | null = null;
   private readonly opts: FeedAdCreateOptions;
   private stopSync: (() => void) | null = null;
 
@@ -35,10 +36,15 @@ export class FeedAd {
     if (this.id !== null) {
       return this.id;
     }
-    await ensureAdMobStarted();
-    const result = await AdMob.feedAdCreate(this.opts);
-    this.id = result.id;
-    return this.id;
+    this.createPromise ??= (async () => {
+      await ensureAdMobStarted();
+      const result = await AdMob.feedAdCreate(this.opts);
+      this.id = result.id;
+      return result.id;
+    })().finally(() => {
+      this.createPromise = null;
+    });
+    return this.createPromise;
   }
 
   async load(): Promise<void> {
@@ -109,13 +115,6 @@ export class FeedAd {
       resizeObserver.observe(element);
     }
 
-    let rafId = 0;
-    const tick = () => {
-      void this.pushBounds(element);
-      rafId = window.requestAnimationFrame(tick);
-    };
-    rafId = window.requestAnimationFrame(tick);
-
     this.stopSync = () => {
       scrollTargets.forEach((target) => {
         target.removeEventListener('scroll', onChange);
@@ -123,7 +122,6 @@ export class FeedAd {
       window.removeEventListener('resize', onChange);
       window.removeEventListener('orientationchange', onChange);
       resizeObserver?.disconnect();
-      window.cancelAnimationFrame(rafId);
     };
   }
 

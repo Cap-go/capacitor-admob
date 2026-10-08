@@ -36,18 +36,18 @@ for _ in 1 2 3 4 5; do
 done
 
 wait_for_ad_ui() {
-  local attempts=20
+  local attempts=30
   local i dump
   for (( i = 1; i <= attempts; i++ )); do
     adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 || true
     dump=$(adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true)
-    if echo "$dump" | grep -qiE 'Sponsored|Install|AdMob|Google'; then
+    if echo "$dump" | grep -qiE 'NativeAdView|text="Test Ad"|text="Install"|com\.google\.android\.gms\.ads'; then
       return 0
     fi
     sleep 2
   done
-  echo "Warning: sponsored UI not detected in hierarchy; capturing anyway"
-  return 0
+  echo "Timed out waiting for native ad UI in accessibility hierarchy"
+  return 1
 }
 
 wait_for_ad_ui

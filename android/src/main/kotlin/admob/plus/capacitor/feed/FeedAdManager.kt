@@ -116,6 +116,7 @@ private class FeedAdEntry(
     fun destroy() {
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
+        nativeAd?.destroy()
         nativeAd = null
         adHost?.let { (it.parent as? ViewGroup)?.removeView(it) }
         adHost = null
@@ -201,9 +202,15 @@ private class FeedAdEntry(
     }
 
     private fun displayNativeAd(ad: NativeAd) {
+        val oldHost = adHost
+        val oldParent = oldHost?.parent as? ViewGroup
+        oldParent?.removeView(oldHost)
+        nativeAd?.destroy()
         nativeAd = ad
         val nativeAdView = buildNativeAdView(ad)
         adHost = nativeAdView
+        oldHost?.layoutParams?.let { nativeAdView.layoutParams = it }
+        oldParent?.addView(nativeAdView)
         loaded = true
         nativeAdView.visibility = View.VISIBLE
 
