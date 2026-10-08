@@ -5,8 +5,12 @@ repo_root="${GITHUB_WORKSPACE:-$(cd "$(dirname "$0")/../.." && pwd)}"
 screenshots_dir="$repo_root/screenshots"
 apk_path="${FEED_APK_PATH:-$repo_root/example-app/android/app/build/outputs/apk/debug/app-debug.apk}"
 feed_log_tag="CapgoAdmobFeed"
+APP_ID="app.capgo.admob"
+MAIN_ACTIVITY="${APP_ID}/.MainActivity"
+CI_FEED_MARKER="CAPGO_CI_FEED_SECTION_VISIBLE"
 
 mkdir -p "$screenshots_dir"
+status_file="$screenshots_dir/native-ad-status.txt"
 
 if [[ ! -f "$apk_path" ]]; then
   echo "Missing APK at $apk_path"
@@ -23,62 +27,165 @@ until adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; do
   fi
   sleep 2
 done
-adb shell input keyevent 82 || true
 
-scroll_feed() {
-  for _ in 1 2 3 4 5 6; do
-    adb shell input swipe 400 1200 400 350 220
-    sleep 0.35
+wake_device() {
+  adb shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+  adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
+}
+
+keep_screen_on() {
+  adb shell settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true
+  adb shell svc power stayon usb >/dev/null 2>&1 || true
+}
+
+assert_app_in_foreground() {
+  local dump
+  dump=$(adb shell dumpsys activity activities 2>/dev/null || true)
+  if echo "$dump" | grep -E 'mResumedActivity|topResumedActivity' | grep -q "${APP_ID}"; then
+    return 0
+  fi
+  echo "Expected ${APP_ID} in resumed activity; got:"
+  echo "$dump" | grep -E 'mResumedActivity|topResumedActivity' | head -5 || true
+  return 1
+}
+
+launch_main_activity() {
+  wake_device
+  adb logcat -c >/dev/null 2>&1 || true
+  adb shell am start -W -S -n "${MAIN_ACTIVITY}"
+  sleep 4
+  assert_app_in_foreground
+}
+
+wait_for_log_pattern() {
+  local pattern="$1"
+  local attempts="${2:-45}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if (( i % 10 == 0 )); then
+      wake_device
+      adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+      sleep 2
+      assert_app_in_foreground || true
+    fi
+    if adb logcat -d 2>/dev/null | grep -F "$pattern" | grep -q .; then
+      return 0
+    fi
+    sleep 2
   done
+  echo "Timed out waiting for log pattern: ${pattern}"
+  adb logcat -d 2>/dev/null | tail -40 || true
+  return 1
 }
-
-launch_feed_app() {
-  adb logcat -c
-  adb shell am start -n app.capgo.admob/.MainActivity
-  sleep 16
-  scroll_feed
-}
-
-adb install -r "$apk_path"
-launch_feed_app
 
 wait_for_feed_load() {
   local format="$1"
-  local attempts=60
+  local attempts="${2:-50}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
+    if (( i % 10 == 0 )); then
+      wake_device
+      adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+      sleep 2
+    fi
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
       return 0
     fi
     sleep 2
   done
-  echo "Timed out waiting for feed_load (format=${format}) in logcat"
+  echo "Timed out waiting for feed_load format=${format}"
   adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
   return 1
 }
 
-if ! wait_for_feed_load native; then
-  echo "Native ad did not load; restarting app once for another fill attempt"
-  adb shell am force-stop app.capgo.admob
-  launch_feed_app
-  if ! wait_for_feed_load native; then
-    echo "Native test unit still no-fill on emulator; capturing in-feed banner overlay for first shot"
-    wait_for_feed_load banner
+scroll_feed_list_down() {
+  local count="${1:-4}"
+  local _i
+  for ((_i = 0; _i < count; _i++)); do
+    adb shell input swipe 400 1100 400 450 280
+    sleep 0.45
+  done
+}
+
+capture_screenshot() {
+  local outfile="$1"
+  wake_device
+  adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+  sleep 2
+  assert_app_in_foreground
+  sleep 0.75
+  adb exec-out screencap -p > "$outfile"
+  if [[ ! -s "$outfile" ]]; then
+    echo "Empty screenshot at ${outfile}"
+    return 1
   fi
+}
+
+validate_png_pair() {
+  local a="$1"
+  local b="$2"
+  if [[ ! -f "$a" || ! -f "$b" ]]; then
+    return 0
+  fi
+  local ha hb
+  ha=$(md5sum "$a" | awk '{print $1}')
+  hb=$(md5sum "$b" | awk '{print $1}')
+  if [[ "$ha" == "$hb" ]]; then
+    echo "Screenshots are byte-identical; refusing to upload invalid captures"
+    return 1
+  fi
+  return 0
+}
+
+adb install -r "$apk_path"
+keep_screen_on
+launch_main_activity
+
+if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
+  echo "Feed section never became visible in logcat"
+  exit 1
 fi
-sleep 1
-adb exec-out screencap -p > "$screenshots_dir/feed-native-raw.png"
 
-for _ in 1 2 3; do
-  adb shell input swipe 400 1200 400 350 220
-  sleep 0.35
-done
+native_loaded=false
+if wait_for_feed_load native 35; then
+  native_loaded=true
+  echo "native_status=loaded" > "$status_file"
+else
+  echo "native_status=no_fill" > "$status_file"
+fi
 
-wait_for_feed_load banner
-sleep 1
-adb exec-out screencap -p > "$screenshots_dir/feed-banner-raw.png"
+if ! wait_for_feed_load banner 40; then
+  echo "Banner test ad did not load; cannot produce in-feed screenshot"
+  exit 1
+fi
 
-convert "$screenshots_dir/feed-native-raw.png" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
-convert "$screenshots_dir/feed-banner-raw.png" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+native_raw="$screenshots_dir/feed-native-raw.png"
+banner_raw="$screenshots_dir/feed-banner-raw.png"
 
+if [[ "$native_loaded" == true ]]; then
+  launch_main_activity
+  scroll_feed_list_down 2
+  capture_screenshot "$native_raw"
+  convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
+else
+  echo "Skipping native screenshot (test unit no-fill on this emulator run)"
+  rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
+fi
+
+launch_main_activity
+scroll_feed_list_down 6
+capture_screenshot "$banner_raw"
+convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+
+if [[ ! -f "$screenshots_dir/feed-banner-in-feed.png" ]]; then
+  echo "Missing required banner screenshot"
+  exit 1
+fi
+
+if [[ -f "$screenshots_dir/feed-native-in-feed.png" ]]; then
+  validate_png_pair "$screenshots_dir/feed-native-in-feed.png" "$screenshots_dir/feed-banner-in-feed.png"
+fi
+
+assert_app_in_foreground
 ls -la "$screenshots_dir"
+cat "$status_file"

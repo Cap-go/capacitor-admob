@@ -167,6 +167,7 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void CapacitorUpdater.notifyAppReady().catch(() => undefined);
   window.setTimeout(() => {
     document.getElementById('feedSection')?.scrollIntoView({ block: 'start' });
+    console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
     attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
   }, 6000);
 }
