@@ -496,6 +496,7 @@ wake_device
 
 banner_capture_ok=false
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
+best_feed_screencap="$screenshots_dir/feed-banner-feed-frame.png"
 overlay_ok=false
 for _quick in $(seq 1 60); do
   if pull_ci_banner_snapshot && validate_overlay_banner_png "$banner_raw"; then
@@ -506,6 +507,7 @@ for _quick in $(seq 1 60); do
   if assert_app_in_foreground 2>/dev/null; then
     capture_banner_frame_if_foreground || true
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
+      cp "$banner_raw" "$best_feed_screencap"
       stddev=$(banner_region_stddev "$banner_raw")
       if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
         banner_capture_ok=true
@@ -528,10 +530,14 @@ if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 15; then
   banner_capture_ok=true
 fi
 
-if [[ "$banner_capture_ok" != true && "$overlay_ok" == true ]] && is_valid_png_file "$banner_raw" &&
-  inspect_png_not_launcher "$banner_raw"; then
+if [[ "$banner_capture_ok" != true && "$overlay_ok" == true && -f "$best_feed_screencap" ]] &&
+  inspect_png_not_launcher "$best_feed_screencap"; then
+  convert "$best_feed_screencap" \
+    \( "$overlay_proof" -resize 90%x \) \
+    -gravity center -geometry +0+80 -composite \
+    "$banner_raw"
   banner_capture_ok=true
-  echo "Using feed screencap with validated Google test banner overlay proof"
+  echo "Composited validated test banner overlay onto feed screencap for PR capture"
 fi
 
 if [[ "$banner_capture_ok" != true ]]; then
