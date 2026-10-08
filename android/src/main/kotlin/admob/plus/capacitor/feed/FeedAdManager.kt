@@ -2,6 +2,7 @@ package admob.plus.capacitor.feed
 
 import admob.plus.capacitor.AdMobPlusPlugin
 import admob.plus.capacitor.Generated
+import android.content.pm.ApplicationInfo
 import android.graphics.Color
 import android.util.Log
 import android.os.Handler
@@ -32,6 +33,8 @@ import kotlin.math.max
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
 private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
+private const val MAX_NATIVE_NO_FILL_RETRIES = 8
+private const val NATIVE_NO_FILL_RETRY_DELAY_MS = 2_000L
 
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     private val entries = mutableMapOf<Int, FeedAdEntry>()
@@ -111,6 +114,7 @@ private class FeedAdEntry(
     private var loaded = false
     private var refreshRunnable: Runnable? = null
     private var loadCallback: ((String?) -> Unit)? = null
+    private var nativeNoFillRetries = 0
 
     val isLoaded: Boolean
         get() = loaded
@@ -200,6 +204,11 @@ private class FeedAdEntry(
                         FEED_SCREENSHOT_LOG_TAG,
                         "feed_load_fail id=$id format=native code=${adError.code.value} message=${adError.message}",
                     )
+                    if (shouldRetryNativeNoFill(adError)) {
+                        nativeNoFillRetries += 1
+                        mainHandler.postDelayed({ loadNative() }, NATIVE_NO_FILL_RETRY_DELAY_MS)
+                        return
+                    }
                     emitFeedFail(adError)
                     loaded = false
                     finishLoad(adError.message)
@@ -230,9 +239,18 @@ private class FeedAdEntry(
         assets.put("store", ad.store ?: "")
         ad.starRating?.let { assets.put("starRating", it) }
         ad.mediaContent?.aspectRatio?.let { assets.put("mediaAspectRatio", it) }
+        nativeNoFillRetries = 0
         emitFeed(Generated.Events.FEED_LOAD, assets)
         Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load id=$id format=native")
         finishLoad(null)
+    }
+
+    private fun shouldRetryNativeNoFill(adError: LoadAdError): Boolean {
+        val isDebuggable =
+            (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        return isDebuggable &&
+            adError.message.equals("No fill.", ignoreCase = true) &&
+            nativeNoFillRetries < MAX_NATIVE_NO_FILL_RETRIES
     }
 
     private fun buildNativeAdView(ad: NativeAd): NativeAdView {

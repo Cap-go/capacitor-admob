@@ -44,7 +44,7 @@ launch_feed_app
 
 wait_for_feed_load() {
   local format="$1"
-  local attempts=45
+  local attempts=60
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
@@ -61,7 +61,10 @@ if ! wait_for_feed_load native; then
   echo "Native ad did not load; restarting app once for another fill attempt"
   adb shell am force-stop app.capgo.admob
   launch_feed_app
-  wait_for_feed_load native
+  if ! wait_for_feed_load native; then
+    echo "Native test unit still no-fill on emulator; capturing in-feed banner overlay for first shot"
+    wait_for_feed_load banner
+  fi
 fi
 sleep 1
 adb exec-out screencap -p > "$screenshots_dir/feed-native-raw.png"
