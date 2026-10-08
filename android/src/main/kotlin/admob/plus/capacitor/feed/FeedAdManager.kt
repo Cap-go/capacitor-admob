@@ -193,7 +193,7 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
-                    maybeWriteCiBannerOverlaySnapshot(host)
+                    maybeWriteCiBannerOverlaySnapshot(host, w, h)
                 }
             } else if (
                 visible &&
@@ -203,12 +203,12 @@ private class FeedAdEntry(
                 w > 40 &&
                 h > 20
             ) {
-                maybeWriteCiBannerOverlaySnapshot(host)
+                maybeWriteCiBannerOverlaySnapshot(host, w, h)
             }
         }
     }
 
-    private fun maybeWriteCiBannerOverlaySnapshot(host: View) {
+    private fun maybeWriteCiBannerOverlaySnapshot(host: View, layoutW: Int, layoutH: Int) {
         val isDebuggable =
             (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
@@ -216,7 +216,7 @@ private class FeedAdEntry(
         }
         host.post {
             if (!ciBannerSnapshotWritten) {
-                writeCiBannerOverlaySnapshotNow(host)
+                writeCiBannerOverlaySnapshotNow(host, layoutW, layoutH)
             }
         }
     }
@@ -228,13 +228,25 @@ private class FeedAdEntry(
             return
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
-        adHost?.let { maybeWriteCiBannerOverlaySnapshot(it) }
+        adHost?.let { host ->
+            val lp = host.layoutParams
+            val w = host.width.takeIf { it > 20 } ?: lp?.width ?: 0
+            val h = host.height.takeIf { it > 10 } ?: lp?.height ?: 0
+            if (w > 20 && h > 10) {
+                maybeWriteCiBannerOverlaySnapshot(host, w, h)
+            }
+        }
         val delaysMs = longArrayOf(150L, 400L, 900L, 1_600L, 2_400L)
         for (delayMs in delaysMs) {
             mainHandler.postDelayed(
                 {
                     if (!ciBannerSnapshotWritten) {
-                        adHost?.let { writeCiBannerOverlaySnapshotNow(it) }
+                        adHost?.let { host ->
+                            val lp = host.layoutParams
+                            val w = host.width.takeIf { it > 20 } ?: lp?.width ?: 0
+                            val h = host.height.takeIf { it > 10 } ?: lp?.height ?: 0
+                            writeCiBannerOverlaySnapshotNow(host, w, h)
+                        }
                     }
                 },
                 delayMs,
@@ -242,19 +254,28 @@ private class FeedAdEntry(
         }
     }
 
-    private fun writeCiBannerOverlaySnapshotNow(host: View) {
-        if (host.width < 20 || host.height < 10) {
+    private fun writeCiBannerOverlaySnapshotNow(host: View, layoutW: Int, layoutH: Int) {
+        var width = if (host.width >= 20) host.width else layoutW
+        var height = if (host.height >= 10) host.height else layoutH
+        if (width < 20 || height < 10) {
             Log.i(
                 FEED_SCREENSHOT_LOG_TAG,
-                "ci_banner_snapshot_failed message=host_not_laid_out w=${host.width} h=${host.height}",
+                "ci_banner_snapshot_failed message=host_not_laid_out w=${host.width} h=${host.height} lw=$layoutW lh=$layoutH",
             )
             return
+        }
+        if (host.width < 20 || host.height < 10) {
+            host.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
+            )
+            host.layout(0, 0, width, height)
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
         var bitmap: Bitmap? = null
         try {
-            val width = host.width.coerceAtLeast(1)
-            val height = host.height.coerceAtLeast(1)
+            width = host.width.coerceAtLeast(width).coerceAtLeast(1)
+            height = host.height.coerceAtLeast(height).coerceAtLeast(1)
             bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.WHITE)
