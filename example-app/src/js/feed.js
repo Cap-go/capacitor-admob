@@ -156,10 +156,7 @@ const attachFeedAds = async () => {
       }
 
       scrollFeedSectionIntoView();
-      const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
-      bannerSlot?.scrollIntoView({ block: 'center', behavior: 'auto' });
-      await new Promise((resolve) => window.setTimeout(resolve, 1500));
-      console.info('CAPGO_CI_BANNER_SLOT_READY');
+      feedList.querySelector('.feed-ad-slot.banner')?.scrollIntoView({ block: 'center', behavior: 'auto' });
       return;
     }
 
@@ -184,6 +181,14 @@ const registerFeedListeners = () => {
   names.forEach((eventName) => {
     AdMob.addListener(eventName, (event) => {
       logFeed(eventName, event);
+      if (
+        ciFeedDemo &&
+        eventName === AdMobPlusEvents.FeedLoad &&
+        event?.format === 'banner'
+      ) {
+        feedList.querySelector('.feed-ad-slot.banner')?.scrollIntoView({ block: 'center', behavior: 'auto' });
+        console.info('CAPGO_CI_BANNER_SLOT_READY');
+      }
     });
   });
 };
@@ -218,5 +223,5 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
     scrollFeedSectionIntoView();
     console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
     attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
-  }, 4000);
+  }, 2500);
 }

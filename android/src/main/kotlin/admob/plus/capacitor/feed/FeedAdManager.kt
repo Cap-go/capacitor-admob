@@ -115,6 +115,7 @@ private class FeedAdEntry(
     private var refreshRunnable: Runnable? = null
     private var loadCallback: ((String?) -> Unit)? = null
     private var nativeNoFillRetries = 0
+    private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
 
     val isLoaded: Boolean
@@ -123,6 +124,8 @@ private class FeedAdEntry(
     fun destroy() {
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
+        nativeNoFillRetryRunnable?.let { mainHandler.removeCallbacks(it) }
+        nativeNoFillRetryRunnable = null
         nativeAd?.destroy()
         nativeAd = null
         adHost?.let { (it.parent as? ViewGroup)?.removeView(it) }
@@ -215,7 +218,10 @@ private class FeedAdEntry(
                     )
                     if (shouldRetryNativeNoFill(adError)) {
                         nativeNoFillRetries += 1
-                        mainHandler.postDelayed({ loadNative() }, NATIVE_NO_FILL_RETRY_DELAY_MS)
+                        nativeNoFillRetryRunnable?.let { mainHandler.removeCallbacks(it) }
+                        val retry = Runnable { loadNative() }
+                        nativeNoFillRetryRunnable = retry
+                        mainHandler.postDelayed(retry, NATIVE_NO_FILL_RETRY_DELAY_MS)
                         return
                     }
                     emitFeedFail(adError)

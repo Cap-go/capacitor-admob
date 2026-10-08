@@ -43,7 +43,7 @@ keep_screen_on() {
 
 display_metrics() {
   local line w h
-  line=$(adb shell wm size 2>/dev/null | grep -Eo '[0-9]+x[0-9]+' | tail -1)
+  line=$(adb shell wm size 2>/dev/null | { grep -Eo '[0-9]+x[0-9]+' || true; } | tail -1)
   w=${line%x*}
   h=${line#*x}
   if [[ -z "$w" || -z "$h" ]]; then
@@ -95,8 +95,6 @@ ensure_foreground() {
   if assert_app_in_foreground 2>/dev/null; then
     return 0
   fi
-  adb shell monkey -p "${APP_ID}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
-  sleep 2
   assert_app_in_foreground
 }
 
@@ -275,7 +273,7 @@ inspect_png_not_launcher() {
 
 assert_banner_screenshot_content() {
   local png="$1"
-  local dump
+  local dump stddev
   if [[ ! -f "$banner_status_file" ]]; then
     echo "Banner load status file missing before capture"
     return 1
@@ -285,7 +283,51 @@ assert_banner_screenshot_content() {
     echo "Banner screenshot shows the SDK setup screen, not section 5"
     return 1
   fi
-  inspect_png_not_launcher "$png"
+  if ! inspect_png_not_launcher "$png"; then
+    return 1
+  fi
+  stddev=$(convert "$png" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+  if awk -v s="$stddev" 'BEGIN { exit !(s < 2000) }'; then
+    echo "Screenshot feed region looks flat (stddev=${stddev}); banner likely not visible"
+    return 1
+  fi
+  return 0
+}
+
+wait_and_capture_banner() {
+  local timeout_s="${1:-75}"
+  local start_ts end_ts
+  start_ts=$(date +%s)
+  while true; do
+    end_ts=$(date +%s)
+    if (( end_ts - start_ts > timeout_s )); then
+      echo "Timed out waiting to capture banner in feed"
+      return 1
+    fi
+    if ! assert_app_in_foreground 2>/dev/null; then
+      ensure_foreground || true
+      sleep 1
+      continue
+    fi
+    if recent_logcat | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+      echo "banner_loaded=1" > "$banner_status_file"
+    fi
+    if [[ ! -f "$banner_status_file" ]]; then
+      sleep 0.25
+      continue
+    fi
+    if ! recent_logcat | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
+      sleep 0.25
+      continue
+    fi
+    wake_device
+    adb exec-out screencap -p > "$banner_raw"
+    convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+    if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
+      return 0
+    fi
+    sleep 0.35
+  done
 }
 
 adb install -r "$apk_path"
@@ -300,52 +342,17 @@ fi
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
 
-if ! wait_for_feed_load banner 30; then
-  echo "Banner test ad did not load; cannot produce in-feed screenshot"
+banner_raw="$screenshots_dir/feed-banner-raw.png"
+native_raw="$screenshots_dir/feed-native-raw.png"
+
+if ! wait_and_capture_banner 75; then
+  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   exit 1
 fi
-
-echo "banner_loaded=1" > "$banner_status_file"
-sleep 4
 
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
-fi
-
-banner_raw="$screenshots_dir/feed-banner-raw.png"
-native_raw="$screenshots_dir/feed-native-raw.png"
-
-capture_banner_when_ready() {
-  local wait_attempts="${1:-24}"
-  local i shot_try banner_seen=true
-  for (( i = 1; i <= wait_attempts; i++ )); do
-    if ! assert_app_in_foreground 2>/dev/null; then
-      maybe_recover_foreground || true
-      sleep 0.5
-      continue
-    fi
-    sleep 2
-    for shot_try in 1 2 3 4; do
-      wake_device
-      sleep 1
-      adb exec-out screencap -p > "$banner_raw"
-      convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-      if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
-        return 0
-      fi
-      sleep 0.25
-    done
-    sleep 0.5
-  done
-  echo "Timed out capturing banner while feed_load was present"
-  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
-  return 1
-}
-
-if ! capture_banner_when_ready; then
-  echo "Banner feed slot never became ready or capture failed"
-  exit 1
 fi
 
 if [[ "$native_loaded" == true ]] && wait_for_native_slot_ready 30; then
