@@ -261,17 +261,16 @@ inspect_png_not_launcher() {
 assert_banner_screenshot_content() {
   local png="$1"
   local dump
+  if ! logcat_snapshot | grep "${feed_log_tag}" | grep -qE 'ci_banner_slot_ready|overlay_visible id=.* format=banner'; then
+    echo "Banner overlay was not visible in logcat before capture"
+    return 1
+  fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
     echo "Banner screenshot shows the SDK setup screen, not section 5"
     return 1
   fi
-  if echo "$dump" | grep -qE 'In-Feed Native|Sponsored \(banner'; then
-    inspect_png_not_launcher "$png"
-    return 0
-  fi
-  echo "Banner screenshot UI hierarchy does not include the feed section labels"
-  return 1
+  inspect_png_not_launcher "$png"
 }
 
 adb install -r "$apk_path"
