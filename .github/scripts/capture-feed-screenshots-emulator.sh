@@ -299,6 +299,13 @@ fi
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
 
+if ! wait_for_feed_load banner 30; then
+  echo "Banner test ad did not load; cannot produce in-feed screenshot"
+  exit 1
+fi
+
+sleep 4
+
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
@@ -308,18 +315,11 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
 capture_banner_when_ready() {
-  local wait_attempts="${1:-45}"
-  local i shot_try banner_seen=false
+  local wait_attempts="${1:-24}"
+  local i shot_try banner_seen=true
   for (( i = 1; i <= wait_attempts; i++ )); do
     if ! assert_app_in_foreground 2>/dev/null; then
       maybe_recover_foreground || true
-      sleep 0.5
-      continue
-    fi
-    if recent_logcat | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-      banner_seen=true
-    fi
-    if [[ "$banner_seen" != true ]]; then
       sleep 0.5
       continue
     fi
