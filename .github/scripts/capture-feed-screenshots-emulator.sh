@@ -8,6 +8,8 @@ feed_log_tag="CapgoAdmobFeed"
 APP_ID="app.capgo.admob"
 MAIN_ACTIVITY="${APP_ID}/.MainActivity"
 CI_FEED_MARKER="CAPGO_CI_FEED_SECTION_VISIBLE"
+CI_BANNER_SLOT_MARKER="CAPGO_CI_BANNER_SLOT_READY"
+CI_NATIVE_SLOT_MARKER="CAPGO_CI_NATIVE_SLOT_READY"
 
 mkdir -p "$screenshots_dir"
 status_file="$screenshots_dir/native-ad-status.txt"
@@ -224,26 +226,22 @@ fi
 native_raw="$screenshots_dir/feed-native-raw.png"
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 
-if [[ "$native_loaded" == true ]]; then
+if [[ "$native_loaded" == true ]] && wait_for_log_pattern "$CI_NATIVE_SLOT_MARKER" 15; then
   ensure_foreground
-  scroll_feed_list_down 3
-  if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=native'; then
-    capture_screenshot "$native_raw"
-    convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
-  else
-    echo "Native overlay not visible; skipping native screenshot"
-    echo "native_status=no_fill" > "$status_file"
-    rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
-  fi
+  sleep 2
+  capture_screenshot "$native_raw"
+  convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
 else
   echo "Skipping native screenshot (test unit no-fill on this emulator run)"
   rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
 fi
 
+if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 45; then
+  echo "Banner feed slot never scrolled into view in the WebView"
+  exit 1
+fi
 ensure_foreground
-scroll_feed_list_down 8
-sleep 2
-ensure_foreground
+sleep 3
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
