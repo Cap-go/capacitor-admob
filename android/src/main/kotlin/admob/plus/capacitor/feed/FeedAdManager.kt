@@ -33,7 +33,7 @@ import kotlin.math.max
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
 private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
-private const val MAX_NATIVE_NO_FILL_RETRIES = 8
+private const val MAX_NATIVE_NO_FILL_RETRIES = 0
 private const val NATIVE_NO_FILL_RETRY_DELAY_MS = 2_000L
 
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
