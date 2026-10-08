@@ -164,9 +164,8 @@ scroll_feed_list_down() {
   local y1=$((DISPLAY_H * 68 / 100))
   local y2=$((DISPLAY_H * 38 / 100))
   for ((_i = 0; _i < count; _i++)); do
-    ensure_foreground || true
     adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 280
-    sleep 0.4
+    sleep 0.35
   done
 }
 
