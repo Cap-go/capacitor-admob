@@ -308,10 +308,14 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
 capture_banner_when_ready() {
-  local wait_attempts="${1:-90}"
+  local wait_attempts="${1:-45}"
   local i shot_try banner_seen=false
   for (( i = 1; i <= wait_attempts; i++ )); do
-    maybe_recover_foreground || true
+    if ! assert_app_in_foreground 2>/dev/null; then
+      maybe_recover_foreground || true
+      sleep 0.5
+      continue
+    fi
     if recent_logcat | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
       banner_seen=true
     fi
@@ -319,10 +323,7 @@ capture_banner_when_ready() {
       sleep 0.5
       continue
     fi
-    if ! assert_app_in_foreground 2>/dev/null; then
-      sleep 0.5
-      continue
-    fi
+    sleep 2
     for shot_try in 1 2 3 4; do
       wake_device
       sleep 1
