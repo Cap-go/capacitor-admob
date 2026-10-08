@@ -1,6 +1,7 @@
 package admob.plus.capacitor
 
 import admob.plus.capacitor.ads.Banner
+import admob.plus.capacitor.feed.FeedAdManager
 import admob.plus.capacitor.ads.Interstitial
 import admob.plus.capacitor.ads.Rewarded
 import admob.plus.capacitor.ads.RewardedInterstitial
@@ -24,6 +25,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     private val pluginVersion = "8.0.15"
     private var helper: Helper? = null
     private var consentHelper: ConsentHelper? = null
+    private var feedAdManager: FeedAdManager? = null
     @Volatile
     private var mobileAdsInitialized = false
     private var requestConfigurationOverride: RequestConfiguration? = null
@@ -32,6 +34,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         super.load()
         helper = Helper(this)
         consentHelper = ConsentHelper(this)
+        feedAdManager = FeedAdManager(this)
         ExecuteContext.plugin = this
     }
 
@@ -177,6 +180,113 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
                 }
             }
         }
+    }
+
+    @PluginMethod
+    fun feedAdCreate(call: PluginCall) {
+        val format = call.getString("format")
+        val adUnitId = call.getString("adUnitId")
+        if (format == null || adUnitId == null) {
+            call.reject("format and adUnitId are required")
+            return
+        }
+        val positionKey = call.getString("positionKey")
+        val autoRefreshMs = if (call.data.has("autoRefreshMs") && !call.data.isNull("autoRefreshMs")) {
+            call.getInt("autoRefreshMs")
+        } else {
+            null
+        }
+        val nativeStyle = mutableMapOf<String, String>()
+        val styleObj = call.getObject("nativeStyle")
+        if (styleObj != null) {
+            val keys = styleObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                nativeStyle[key] = styleObj.optString(key)
+            }
+        }
+        bridge.executeOnMainThread {
+            val id = feedAdManager!!.create(format, adUnitId, positionKey, autoRefreshMs, nativeStyle)
+            val ret = JSObject()
+            ret.put("id", id)
+            call.resolve(ret)
+        }
+    }
+
+    @PluginMethod
+    fun feedAdDestroy(call: PluginCall) {
+        val id = call.getInt("id")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        bridge.executeOnMainThread {
+            feedAdManager!!.destroy(id)
+            call.resolve()
+        }
+    }
+
+    @PluginMethod
+    fun feedAdLoad(call: PluginCall) {
+        val id = call.getInt("id")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        if (rejectIfNotInitialized { call.reject(it) }) {
+            return
+        }
+        feedAdManager!!.load(id) { error ->
+            if (error != null) {
+                call.reject(error)
+            } else {
+                call.resolve()
+            }
+        }
+    }
+
+    @PluginMethod
+    fun feedAdIsLoaded(call: PluginCall) {
+        val id = call.getInt("id")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        val ret = JSObject()
+        ret.put("value", feedAdManager!!.isLoaded(id))
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun feedAdUpdateBounds(call: PluginCall) {
+        val id = call.getInt("id")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        val x = call.getDouble("x") ?: 0.0
+        val y = call.getDouble("y") ?: 0.0
+        val width = call.getDouble("width") ?: 0.0
+        val height = call.getDouble("height") ?: 0.0
+        val visible = call.getBoolean("visible") ?: false
+        feedAdManager!!.updateBounds(id, x, y, width, height, visible)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun feedAdSetAutoRefresh(call: PluginCall) {
+        val id = call.getInt("id")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        val autoRefreshMs = if (call.data.has("autoRefreshMs") && !call.data.isNull("autoRefreshMs")) {
+            call.getInt("autoRefreshMs")
+        } else {
+            null
+        }
+        feedAdManager!!.setAutoRefresh(id, autoRefreshMs)
+        call.resolve()
     }
 
     @PluginMethod

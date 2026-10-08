@@ -102,6 +102,12 @@ For local testing on a real device, pass `debugGeography` and `testDeviceIdentif
 * [`adLoad(...)`](#adload)
 * [`adShow(...)`](#adshow)
 * [`adHide(...)`](#adhide)
+* [`feedAdCreate(...)`](#feedadcreate)
+* [`feedAdDestroy(...)`](#feedaddestroy)
+* [`feedAdLoad(...)`](#feedadload)
+* [`feedAdIsLoaded(...)`](#feedadisloaded)
+* [`feedAdUpdateBounds(...)`](#feedadupdatebounds)
+* [`feedAdSetAutoRefresh(...)`](#feedadsetautorefresh)
 * [`trackingAuthorizationStatus()`](#trackingauthorizationstatus)
 * [`requestTrackingAuthorization()`](#requesttrackingauthorization)
 * [`addListener(E, ...)`](#addlistenere-)
@@ -302,6 +308,112 @@ Hide a currently displayed ad.
 --------------------
 
 
+### feedAdCreate(...)
+
+```typescript
+feedAdCreate(opts: FeedAdCreateOptions) => Promise<{ id: number; }>
+```
+
+Create an in-feed ad slot (native overlay or inline banner overlay).
+
+| Param      | Type                                                                | Description             |
+| ---------- | ------------------------------------------------------------------- | ----------------------- |
+| **`opts`** | <code><a href="#feedadcreateoptions">FeedAdCreateOptions</a></code> | - Feed ad configuration |
+
+**Returns:** <code>Promise&lt;{ id: number; }&gt;</code>
+
+**Since:** 8.3.0
+
+--------------------
+
+
+### feedAdDestroy(...)
+
+```typescript
+feedAdDestroy(opts: { id: number; }) => Promise<void>
+```
+
+Destroy a feed ad instance and remove its native overlay.
+
+| Param      | Type                         | Description                        |
+| ---------- | ---------------------------- | ---------------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the feed ad id |
+
+**Since:** 8.3.0
+
+--------------------
+
+
+### feedAdLoad(...)
+
+```typescript
+feedAdLoad(opts: { id: number; }) => Promise<void>
+```
+
+Load or reload the feed ad. Listen for `feed.load` / `feed.loadfail` events.
+
+| Param      | Type                         | Description                        |
+| ---------- | ---------------------------- | ---------------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the feed ad id |
+
+**Since:** 8.3.0
+
+--------------------
+
+
+### feedAdIsLoaded(...)
+
+```typescript
+feedAdIsLoaded(opts: { id: number; }) => Promise<boolean>
+```
+
+Whether the feed ad has finished loading.
+
+| Param      | Type                         | Description                        |
+| ---------- | ---------------------------- | ---------------------------------- |
+| **`opts`** | <code>{ id: number; }</code> | - Object containing the feed ad id |
+
+**Returns:** <code>Promise&lt;boolean&gt;</code>
+
+**Since:** 8.3.0
+
+--------------------
+
+
+### feedAdUpdateBounds(...)
+
+```typescript
+feedAdUpdateBounds(opts: FeedAdBounds & { id: number; }) => Promise<void>
+```
+
+Position the native overlay over an HTML placeholder. Call on scroll, resize, and orientation changes.
+
+| Param      | Type                                                                    | Description                                                    |
+| ---------- | ----------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **`opts`** | <code><a href="#feedadbounds">FeedAdBounds</a> & { id: number; }</code> | - Feed ad id and bounds from `element.getBoundingClientRect()` |
+
+**Since:** 8.3.0
+
+--------------------
+
+
+### feedAdSetAutoRefresh(...)
+
+```typescript
+feedAdSetAutoRefresh(opts: { id: number; autoRefreshMs: number | null; }) => Promise<void>
+```
+
+Enable or disable auto-refresh (minimum 30 seconds).
+
+| Param      | Type                                                        | Description                                           |
+| ---------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| **`opts`** | <code>{ id: number; autoRefreshMs: number \| null; }</code> | - Feed ad id and interval in ms, or `null` to disable |
+
+**Since:** 8.3.0
+
+--------------------
+
+
 ### trackingAuthorizationStatus()
 
 ```typescript
@@ -415,6 +527,40 @@ Base options for mobile ads.
 <code>{ /** The ad unit ID from AdMob */ adUnitId: string; }</code>
 
 
+#### FeedAdCreateOptions
+
+Options for creating an in-feed ad instance.
+
+Policy: AdMob counts native impressions and clicks only when assets render inside
+{@link https://developers.google.com/admob/android/native/advanced | NativeAdView} /
+GADNativeAdView with the AdChoices icon and an ad attribution badge. This plugin
+overlays a compliant native view on your placeholder. Optional {@link FeedNativeAdAssets}
+are returned on `feed.load` for layout sizing only, not for manual click forwarding.
+
+<code>{ /** Native advanced or inline banner. */ format: <a href="#feedadformat">FeedAdFormat</a>; /** AdMob ad unit ID. */ adUnitId: string; /** Optional key echoed on feed events for your feed slot. */ positionKey?: string; /** * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds. * Omit or pass `null` to disable auto-refresh. */ autoRefreshMs?: number | null; /** Template colors when `format` is `native`. */ nativeStyle?: <a href="#feednativeadstyle">FeedNativeAdStyle</a>; }</code>
+
+
+#### FeedAdFormat
+
+In-feed ad format. Both use a native overlay aligned to an HTML placeholder.
+
+<code>'native' | 'banner'</code>
+
+
+#### FeedNativeAdStyle
+
+Optional colors for the built-in native ad template (hex strings, e.g. `#ffffff`).
+
+<code>{ backgroundColor?: string; headlineTextColor?: string; bodyTextColor?: string; ctaBackgroundColor?: string; ctaTextColor?: string; }</code>
+
+
+#### FeedAdBounds
+
+Bounds of the HTML placeholder, in CSS pixels relative to the WebView viewport.
+
+<code>{ x: number; y: number; width: number; height: number; /** When false, the native overlay is hidden (e.g. off-screen while scrolling). */ visible: boolean; /** `window.devicePixelRatio` from the WebView. Defaults to 1 on web. */ density?: number; }</code>
+
+
 #### AdMobPlusEventName
 
 <code>(typeof AdMobPlusEvents)[keyof typeof AdMobPlusEvents]</code>
@@ -424,7 +570,7 @@ Base options for mobile ads.
 
 Maps each {@link <a href="#admobpluseventname">AdMobPlusEventName</a>} to the payload shape emitted from native code.
 
-<code>{ [AdMobPlusEvents.AdClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.AdReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.AdShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerClose]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerOpen]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerSizeChange]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.InterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedInterstitialReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedInterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; }</code>
+<code>{ [AdMobPlusEvents.AdClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.AdReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.AdShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerClose]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerOpen]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerSizeChange]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.InterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedInterstitialReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedInterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.FeedClick]: <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; [AdMobPlusEvents.FeedClose]: <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; [AdMobPlusEvents.FeedImpression]: <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; [AdMobPlusEvents.FeedLoad]: <a href="#admobplusfeedloadpayload">AdMobPlusFeedLoadPayload</a>; [AdMobPlusEvents.FeedLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a> & <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; [AdMobPlusEvents.FeedOpen]: <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; [AdMobPlusEvents.FeedRefresh]: <a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a>; }</code>
 
 
 #### AdMobPlusAdIdPayload
@@ -446,6 +592,25 @@ Load and fullscreen show failure payloads from native `LoadAdError` / `FullScree
 Reward callbacks include the earned reward plus `adId`.
 
 <code><a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a> & { reward: { amount: number; type: string; }; }</code>
+
+
+#### AdMobPlusFeedAdIdPayload
+
+In-feed ad events use `feedAdId` (same numeric id as `feedAdCreate`).
+
+<code>{ feedAdId: number; positionKey?: string; format?: 'native' | 'banner'; }</code>
+
+
+#### AdMobPlusFeedLoadPayload
+
+<code><a href="#admobplusfeedadidpayload">AdMobPlusFeedAdIdPayload</a> & { assets?: <a href="#record">Record</a>&lt;string, unknown&gt;; }</code>
+
+
+#### Record
+
+Construct a type with a set of properties K of type T
+
+<code>{ [P in K]: T; }</code>
 
 
 ### Enums

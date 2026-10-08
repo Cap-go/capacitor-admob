@@ -38,5 +38,12 @@ class Generated {
         const val REWARDED_REWARD = "rewarded.reward"
         const val REWARDED_SHOW = "rewarded.show"
         const val REWARDED_SHOW_FAIL = "rewarded.showfail"
+        const val FEED_CLICK = "feed.click"
+        const val FEED_CLOSE = "feed.close"
+        const val FEED_IMPRESSION = "feed.impression"
+        const val FEED_LOAD = "feed.load"
+        const val FEED_LOAD_FAIL = "feed.loadfail"
+        const val FEED_OPEN = "feed.open"
+        const val FEED_REFRESH = "feed.refresh"
     }
 }

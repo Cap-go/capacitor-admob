@@ -1,39 +1,5 @@
-import { registerPlugin } from '@capacitor/core';
-
-import type { AdMobPlusPlugin, MobileAdOptions, RewardedAdOptions, RewardedInterstitialAdOptions } from './definitions';
-
-const AdMob = registerPlugin<AdMobPlusPlugin>('AdMobPlus', {
-  web: () => import('./web').then((m) => new m.AdMobPlusWeb()),
-});
-
-let started = false;
-let startPromise: ReturnType<typeof AdMob.start> | null = null;
-
-const start = AdMob.start.bind(AdMob);
-const ensureStarted = async () => {
-  if (started) return;
-
-  if (startPromise === null) {
-    startPromise = start()
-      .then((result) => {
-        started = true;
-        return result;
-      })
-      .catch((error) => {
-        startPromise = null;
-        throw error;
-      });
-  }
-
-  return startPromise;
-};
-AdMob.start = ensureStarted as AdMobPlusPlugin['start'];
-
-const adIsLoaded = AdMob.adIsLoaded.bind(AdMob);
-AdMob.adIsLoaded = (async (...args: Parameters<AdMobPlusPlugin['adIsLoaded']>) => {
-  const result = (await adIsLoaded(...args)) as boolean | { value?: boolean };
-  return typeof result === 'boolean' ? result : result.value === true;
-}) as AdMobPlusPlugin['adIsLoaded'];
+import type { MobileAdOptions, RewardedAdOptions, RewardedInterstitialAdOptions } from './definitions';
+import { AdMob, ensureAdMobStarted } from './plugin-instance';
 
 class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
   private static allAds: { [s: number]: MobileAd } = {};
@@ -85,9 +51,7 @@ class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
   protected async init() {
     if (this.#created) return;
 
-    if (!started) {
-      await ensureStarted();
-    }
+    await ensureAdMobStarted();
 
     if (this.#init === null) {
       const cls = (this.constructor as unknown as { cls?: string }).cls ?? this.constructor.name;
@@ -190,4 +154,5 @@ class RewardedInterstitialAd extends MobileAd<RewardedInterstitialAdOptions> {
 
 export * from './definitions';
 export * from './events';
+export * from './feed-ad';
 export { AdMob, BannerAd, InterstitialAd, RewardedAd, RewardedInterstitialAd };

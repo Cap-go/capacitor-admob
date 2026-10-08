@@ -170,6 +170,54 @@
       label.inline span {
         color: inherit;
       }
+      .feed-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .feed-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        max-height: 420px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+      .feed-card,
+      .feed-ad-slot {
+        border-radius: 12px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      @media (prefers-color-scheme: light) {
+        .feed-card,
+        .feed-ad-slot {
+          background: #fff;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+      }
+      .feed-card h3 {
+        margin: 0 0 8px;
+        font-size: 1.05rem;
+      }
+      .feed-ad-label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #9ca3af;
+        margin-bottom: 8px;
+      }
+      .feed-ad-placeholder {
+        border-radius: 10px;
+        border: 1px dashed rgba(37, 99, 235, 0.55);
+        min-height: 280px;
+        background: rgba(37, 99, 235, 0.08);
+      }
+      .feed-ad-placeholder.banner {
+        min-height: 60px;
+      }
       pre.log {
         font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
         background: rgba(17, 24, 39, 0.9);
@@ -296,8 +344,22 @@
         </div>
       </section>
 
+      <section class="card feed-section">
+        <h2>5. In-Feed Native and Banner Ads</h2>
+        <p>
+          Scrollable feed with HTML placeholders. On device, the plugin overlays compliant native ad views aligned to each
+          placeholder (test ad unit IDs). Assets are not rendered in HTML; impressions and clicks stay on the native view.
+        </p>
+        <div class="controls-row">
+          <button id="feedStartButton">Start Feed Ads</button>
+          <button id="feedDestroyButton" class="secondary">Destroy Feed Ads</button>
+        </div>
+        <div id="feedList" class="feed-list"></div>
+        <pre id="feedLog" class="log">Feed events will appear here.</pre>
+      </section>
+
       <section class="card">
-        <h2>5. Privacy & Diagnostics</h2>
+        <h2>6. Privacy & Diagnostics</h2>
         <div class="controls-row">
           <button id="trackingStatusButton" class="secondary">Tracking Status</button>
           <button id="requestTrackingButton" class="secondary">Request Tracking Authorization</button>
@@ -310,7 +372,7 @@
       </section>
 
       <section class="card">
-        <h2>6. Event Log</h2>
+        <h2>7. Event Log</h2>
         <div class="controls-row">
           <button id="clearLogButton" class="secondary">Clear Log</button>
         </div>
@@ -319,5 +381,6 @@
     </main>
 
     <script src="./js/example.js" type="module"></script>
+    <script src="./js/feed.js" type="module"></script>
   </body>
 </html>

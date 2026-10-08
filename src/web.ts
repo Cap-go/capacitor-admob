@@ -73,6 +73,42 @@ export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
     console.log('adHide', opts);
   }
 
+  async feedAdCreate(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdCreate']>
+  ): ReturnType<AdMobPlusPlugin['feedAdCreate']> {
+    console.log('feedAdCreate', opts);
+    return { id: 1 };
+  }
+
+  async feedAdDestroy(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdDestroy']>
+  ): ReturnType<AdMobPlusPlugin['feedAdDestroy']> {
+    console.log('feedAdDestroy', opts);
+  }
+
+  async feedAdLoad(...opts: Parameters<AdMobPlusPlugin['feedAdLoad']>): ReturnType<AdMobPlusPlugin['feedAdLoad']> {
+    console.log('feedAdLoad', opts);
+  }
+
+  async feedAdIsLoaded(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdIsLoaded']>
+  ): ReturnType<AdMobPlusPlugin['feedAdIsLoaded']> {
+    console.log('feedAdIsLoaded', opts);
+    return false;
+  }
+
+  async feedAdUpdateBounds(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdUpdateBounds']>
+  ): ReturnType<AdMobPlusPlugin['feedAdUpdateBounds']> {
+    console.log('feedAdUpdateBounds', opts);
+  }
+
+  async feedAdSetAutoRefresh(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdSetAutoRefresh']>
+  ): ReturnType<AdMobPlusPlugin['feedAdSetAutoRefresh']> {
+    console.log('feedAdSetAutoRefresh', opts);
+  }
+
   async trackingAuthorizationStatus(
     ...opts: Parameters<AdMobPlusPlugin['trackingAuthorizationStatus']>
   ): ReturnType<AdMobPlusPlugin['trackingAuthorizationStatus']> {

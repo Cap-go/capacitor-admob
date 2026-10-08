@@ -20,6 +20,12 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "adLoad", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "adShow", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "adHide", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdCreate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdDestroy", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdLoad", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdIsLoaded", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdUpdateBounds", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdSetAutoRefresh", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "trackingAuthorizationStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestTrackingAuthorization", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPluginVersion", returnType: CAPPluginReturnPromise)
@@ -226,6 +232,95 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
+    }
+
+    @objc func feedAdCreate(_ call: CAPPluginCall) {
+        guard let adUnitId = call.getString("adUnitId") else {
+            call.reject("adUnitId is required")
+            return
+        }
+        guard let format = call.getString("format") else {
+            call.reject("format is required")
+            return
+        }
+        let positionKey = call.getString("positionKey")
+        let autoRefreshMs = call.getInt("autoRefreshMs")
+        var nativeStyle: [String: String] = [:]
+        if let styleObj = call.getObject("nativeStyle") {
+            for (key, value) in styleObj {
+                if let str = value as? String {
+                    nativeStyle[key] = str
+                }
+            }
+        }
+        DispatchQueue.main.async {
+            let id = FeedAdManager.shared.create(
+                format: format,
+                adUnitId: adUnitId,
+                positionKey: positionKey,
+                autoRefreshMs: autoRefreshMs,
+                nativeStyle: nativeStyle,
+                plugin: self
+            )
+            call.resolve(["id": id])
+        }
+    }
+
+    @objc func feedAdDestroy(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        DispatchQueue.main.async {
+            FeedAdManager.shared.destroy(id: id)
+            call.resolve()
+        }
+    }
+
+    @objc func feedAdLoad(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        FeedAdManager.shared.load(id: id) { error in
+            if let error = error {
+                call.reject("Failed to load feed ad: \(error.localizedDescription)")
+            } else {
+                call.resolve()
+            }
+        }
+    }
+
+    @objc func feedAdIsLoaded(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        call.resolve(["value": FeedAdManager.shared.isLoaded(id: id)])
+    }
+
+    @objc func feedAdUpdateBounds(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        let x = call.getDouble("x") ?? 0
+        let y = call.getDouble("y") ?? 0
+        let width = call.getDouble("width") ?? 0
+        let height = call.getDouble("height") ?? 0
+        let visible = call.getBool("visible") ?? false
+        FeedAdManager.shared.updateBounds(id: id, x: x, y: y, width: width, height: height, visible: visible)
+        call.resolve()
+    }
+
+    @objc func feedAdSetAutoRefresh(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        let autoRefreshMs = call.getInt("autoRefreshMs")
+        FeedAdManager.shared.setAutoRefresh(id: id, autoRefreshMs: autoRefreshMs)
+        call.resolve()
     }
 
     @objc func adHide(_ call: CAPPluginCall) {
