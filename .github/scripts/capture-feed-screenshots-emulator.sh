@@ -161,8 +161,8 @@ scroll_feed_list_down() {
   local _i
   display_metrics
   local mid_x=$((DISPLAY_W / 2))
-  local y1=$((DISPLAY_H * 68 / 100))
-  local y2=$((DISPLAY_H * 38 / 100))
+  local y1=$((DISPLAY_H * 58 / 100))
+  local y2=$((DISPLAY_H * 46 / 100))
   for ((_i = 0; _i < count; _i++)); do
     adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 280
     sleep 0.35
