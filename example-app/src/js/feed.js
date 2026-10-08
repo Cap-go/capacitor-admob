@@ -1,4 +1,6 @@
 import { Capacitor } from '@capacitor/core';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { AdMob, FeedAd, AdMobPlusEvents } from '@capgo/capacitor-admob';
 
 const NATIVE_TEST_UNIT = 'ca-app-pub-3940256099942544/2247696110';
