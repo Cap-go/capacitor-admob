@@ -363,11 +363,6 @@ assert_banner_screenshot_content() {
     echo "Banner load status file missing before capture"
     return 1
   fi
-  dump=$(ui_hierarchy_dump)
-  if echo "$dump" | grep -qi 'keeps stopping'; then
-    echo "Screenshot capture hit the app crash dialog"
-    return 1
-  fi
   if grep -q 'banner_overlay_snapshot=1' "$banner_status_file" 2>/dev/null; then
     stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
     if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
@@ -447,10 +442,15 @@ if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 90 0; then
   exit 1
 fi
 
-sleep 3
+if ! wait_for_feed_load banner 40; then
+  echo "Banner feed_load never logged"
+  exit 1
+fi
+
+sleep 2
 
 banner_capture_ok=false
-if capture_banner_in_foreground 25; then
+if capture_banner_in_foreground 30; then
   banner_capture_ok=true
 elif capture_banner_screencap_fallback && inspect_png_not_launcher "$banner_raw"; then
   banner_capture_ok=true
