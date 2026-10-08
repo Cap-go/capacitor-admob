@@ -160,9 +160,9 @@ wait_for_ci_banner_snapshot() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if logcat_snapshot | grep -F "ci_banner_snapshot_written" | grep -q .; then
-      return 0
+      pull_ci_banner_snapshot && return 0
     fi
-    if pull_ci_banner_snapshot 2>/dev/null && [[ -s "${banner_raw:-}" ]]; then
+    if pull_ci_banner_snapshot; then
       return 0
     fi
     if (( i % 25 == 0 )); then
@@ -180,7 +180,7 @@ capture_banner_screencap_fallback() {
   ensure_foreground
   sleep 1
   adb exec-out screencap -p > "$banner_raw"
-  [[ -s "$banner_raw" ]]
+  is_valid_png_file "$banner_raw"
 }
 
 wait_for_feed_load() {
@@ -325,12 +325,23 @@ assert_banner_screenshot_content() {
   return 0
 }
 
+is_valid_png_file() {
+  local f="$1"
+  if [[ ! -s "$f" ]]; then
+    return 1
+  fi
+  local mime
+  mime=$(file -b --mime-type "$f" 2>/dev/null || echo "")
+  [[ "$mime" == "image/png" ]]
+}
+
 pull_ci_banner_snapshot() {
   adb exec-out run-as "${APP_ID}" cat cache/ci_feed_banner.png > "$banner_raw" 2>/dev/null || true
-  if [[ ! -s "$banner_raw" ]]; then
+  if ! is_valid_png_file "$banner_raw"; then
+    rm -f "$banner_raw"
     adb shell run-as "${APP_ID}" cat cache/ci_feed_banner.png > "$banner_raw" 2>/dev/null || true
   fi
-  [[ -s "$banner_raw" ]]
+  is_valid_png_file "$banner_raw"
 }
 
 adb install -r "$apk_path"
