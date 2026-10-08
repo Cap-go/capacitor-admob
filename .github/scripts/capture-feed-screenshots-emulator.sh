@@ -148,8 +148,7 @@ wait_for_overlay_visible() {
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "overlay_visible id=.* format=${format}"; then
       return 0
     fi
-    scroll_feed_list_down 1
-    sleep 1
+    sleep 2
   done
   echo "Timed out waiting for overlay_visible format=${format}"
   adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
@@ -240,17 +239,15 @@ else
   rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
 fi
 
-if ! wait_for_overlay_visible banner 40; then
-  echo "Banner overlay never received visible bounds"
-  exit 1
+if ! adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=banner'; then
+  if ! wait_for_overlay_visible banner 25; then
+    echo "Banner overlay never received visible bounds"
+    exit 1
+  fi
 fi
 ensure_foreground
-scroll_feed_list_down 7
-sleep 2
-if ! adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=banner'; then
-  echo "Missing banner overlay_visible logcat marker"
-  exit 1
-fi
+scroll_feed_list_down 14
+sleep 3
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
