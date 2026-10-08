@@ -122,6 +122,7 @@ private class FeedAdEntry(
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
+    private var ciBannerSnapshotScheduled = false
 
     val isLoaded: Boolean
         get() = loaded
@@ -213,9 +214,19 @@ private class FeedAdEntry(
         if (host == null || !loaded) {
             return
         }
+        mainHandler.postDelayed({
+            if (ciBannerSnapshotWritten) {
+                return@postDelayed
+            }
+            writeCiBannerOverlaySnapshotNow(host)
+        }, 400L)
+    }
+
+    private fun writeCiBannerOverlaySnapshotNow(host: View) {
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
         var bitmap: Bitmap? = null
         try {
+            host.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             val width = host.width.coerceAtLeast(1)
             val height = host.height.coerceAtLeast(1)
             bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
