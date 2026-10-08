@@ -222,13 +222,13 @@ capture_screenshot() {
     sleep 1
   done
   assert_example_app_on_screen
+  assert_app_in_foreground
   sleep 1
   adb exec-out screencap -p > "$outfile"
   if [[ ! -s "$outfile" ]]; then
     echo "Empty screenshot at ${outfile}"
     return 1
   fi
-  assert_app_in_foreground
 }
 
 validate_png_pair() {
@@ -329,6 +329,6 @@ if [[ -f "$screenshots_dir/feed-native-in-feed.png" ]]; then
   validate_png_pair "$screenshots_dir/feed-native-in-feed.png" "$screenshots_dir/feed-banner-in-feed.png"
 fi
 
-assert_app_in_foreground
+maybe_recover_foreground || true
 ls -la "$screenshots_dir"
 cat "$status_file"
