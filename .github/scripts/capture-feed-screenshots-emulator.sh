@@ -183,6 +183,31 @@ capture_banner_screencap_fallback() {
   is_valid_png_file "$banner_raw"
 }
 
+capture_banner_in_foreground() {
+  local attempts="${1:-25}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if assert_app_in_foreground 2>/dev/null; then
+      sleep 2
+      adb exec-out screencap -p > "$banner_raw"
+      if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
+        local stddev
+        stddev=$(convert "$banner_raw" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+        if awk -v s="$stddev" 'BEGIN { exit !(s >= 2000) }'; then
+          echo "Captured banner-in-feed via screencap (attempt ${i}, stddev=${stddev})"
+          return 0
+        fi
+        echo "Screencap attempt ${i} feed region flat (stddev=${stddev}); retrying"
+      fi
+    else
+      ensure_foreground || true
+    fi
+    sleep 1
+  done
+  echo "Failed to capture a valid banner-in-feed screencap while app was foreground"
+  return 1
+}
+
 wait_for_feed_load() {
   local format="$1"
   local attempts="${2:-50}"
@@ -366,17 +391,20 @@ if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 60 0; then
   exit 1
 fi
 
-if ! wait_for_ci_banner_snapshot 90; then
-  echo "Native CI banner snapshot was not written; trying foreground screencap fallback"
+banner_capture_ok=false
+if capture_banner_in_foreground 25; then
+  banner_capture_ok=true
+elif wait_for_ci_banner_snapshot 45 && pull_ci_banner_snapshot; then
+  echo "Using native CI banner snapshot from app cache"
+  banner_capture_ok=true
+elif capture_banner_screencap_fallback && inspect_png_not_launcher "$banner_raw"; then
+  banner_capture_ok=true
+fi
+
+if [[ "$banner_capture_ok" != true ]]; then
+  echo "Could not capture a validated banner-in-feed screenshot"
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
-  if ! capture_banner_screencap_fallback; then
-    exit 1
-  fi
-elif ! pull_ci_banner_snapshot; then
-  echo "Failed to pull ci_feed_banner.png from app cache; trying screencap fallback"
-  if ! capture_banner_screencap_fallback; then
-    exit 1
-  fi
+  exit 1
 fi
 
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then

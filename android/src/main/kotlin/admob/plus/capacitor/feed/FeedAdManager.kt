@@ -211,6 +211,7 @@ private class FeedAdEntry(
     }
 
     private fun scheduleCiBannerSnapshotIfNeeded() {
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
         val isDebuggable =
             (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (!isDebuggable) {
@@ -249,6 +250,10 @@ private class FeedAdEntry(
         if (ciBannerSnapshotWritten) {
             return
         }
+        Log.i(
+            FEED_SCREENSHOT_LOG_TAG,
+            "ci_banner_snapshot_attempt id=$id try=$ciBannerSnapshotAttempts loaded=$loaded activity=${plugin.activity != null}",
+        )
         val activity = plugin.activity
         if (activity == null || !loaded) {
             mainHandler.postDelayed(retry, CI_BANNER_SNAPSHOT_RETRY_MS)
@@ -259,10 +264,6 @@ private class FeedAdEntry(
             ciBannerSnapshotRunnable = null
             return
         }
-        Log.i(
-            FEED_SCREENSHOT_LOG_TAG,
-            "ci_banner_snapshot_attempt id=$id try=$ciBannerSnapshotAttempts",
-        )
         val window = activity.window
         val decor = window.decorView
         val width = decor.width.coerceAtLeast(1)
