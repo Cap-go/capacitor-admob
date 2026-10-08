@@ -251,7 +251,7 @@ inspect_png_not_launcher() {
   local png="$1"
   local stats
   stats=$(convert "$png" -crop 90%x12%+5%+8% -format "%[mean]" info: 2>/dev/null || echo "")
-  if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit (m > 45000) }'; then
+  if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit !(m > 45000) }'; then
     echo "Screenshot ${png} looks like the Android launcher (bright status/search band)"
     return 1
   fi
@@ -303,11 +303,24 @@ fi
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
-ensure_foreground
-sleep 2
-capture_screenshot "$banner_raw"
-convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"
+capture_banner_with_retries() {
+  local attempt
+  for attempt in $(seq 1 8); do
+    ensure_foreground
+    sleep 1
+    capture_screenshot "$banner_raw"
+    convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+    if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
+      return 0
+    fi
+    echo "Banner capture attempt ${attempt} was invalid; retrying"
+    sleep 2
+  done
+  echo "Failed to capture a valid in-feed banner screenshot"
+  return 1
+}
+
+capture_banner_with_retries
 
 if [[ "$native_loaded" == true ]] && wait_for_native_slot_ready 30; then
   ensure_foreground
