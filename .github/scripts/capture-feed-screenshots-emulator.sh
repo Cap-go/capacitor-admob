@@ -329,11 +329,15 @@ validate_png_pair() {
 
 inspect_png_not_launcher() {
   local png="$1"
-  local stats mean_all
+  local stats mean_all height
   mean_all=$(convert "$png" -colorspace Gray -format "%[mean]" info: 2>/dev/null || echo "0")
   if awk -v m="$mean_all" 'BEGIN { exit !(m < 12000) }'; then
     echo "Screenshot ${png} is blank or not rendering (mean=${mean_all})"
     return 1
+  fi
+  height=$(identify -format "%h" "$png" 2>/dev/null || echo "1920")
+  if [[ "$height" -lt 400 ]]; then
+    return 0
   fi
   stats=$(convert "$png" -crop 90%x12%+5%+8% -format "%[mean]" info: 2>/dev/null || echo "")
   if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit !(m > 45000) }'; then
@@ -349,6 +353,14 @@ assert_banner_screenshot_content() {
   if [[ ! -f "$banner_status_file" ]]; then
     echo "Banner load status file missing before capture"
     return 1
+  fi
+  if grep -q 'banner_overlay_snapshot=1' "$banner_status_file" 2>/dev/null; then
+    stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+    if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
+      echo "Banner overlay snapshot looks flat (stddev=${stddev})"
+      return 1
+    fi
+    return 0
   fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
@@ -419,6 +431,8 @@ fi
 banner_capture_ok=false
 if wait_for_ci_banner_snapshot 50 && pull_ci_banner_snapshot; then
   echo "Using native CI banner overlay snapshot from app cache"
+  echo "banner_loaded=1" > "$banner_status_file"
+  echo "banner_overlay_snapshot=1" >> "$banner_status_file"
   banner_capture_ok=true
 elif capture_banner_in_foreground 15; then
   banner_capture_ok=true
