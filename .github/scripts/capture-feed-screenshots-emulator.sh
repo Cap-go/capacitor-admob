@@ -218,8 +218,18 @@ capture_banner_in_foreground() {
       local stddev
       stddev=$(convert "$banner_raw" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
       if awk -v s="$stddev" 'BEGIN { exit !(s >= 800) }'; then
-        echo "Captured banner-in-feed via screencap (attempt ${i}, stddev=${stddev})"
-        return 0
+        local dump
+        dump=$(ui_hierarchy_dump)
+        if echo "$dump" | grep -qi 'keeps stopping'; then
+          echo "Screencap attempt ${i} hit crash dialog; retrying"
+          continue
+        fi
+        if echo "$dump" | grep -qi 'banner overlay' &&
+          echo "$dump" | grep -qi 'In-Feed Native and Banner'; then
+          echo "Captured banner-in-feed via screencap (attempt ${i}, stddev=${stddev})"
+          return 0
+        fi
+        echo "Screencap attempt ${i} missing section 5/banner slot in hierarchy; retrying"
       fi
       echo "Screencap attempt ${i} feed region flat (stddev=${stddev}); retrying"
     fi
@@ -384,6 +394,19 @@ assert_banner_screenshot_content() {
   if ! inspect_png_not_launcher "$png"; then
     return 1
   fi
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -qi 'keeps stopping'; then
+    echo "Screenshot validation sees the app crash dialog"
+    return 1
+  fi
+  if ! echo "$dump" | grep -qi 'In-Feed Native and Banner'; then
+    echo "Screenshot validation does not see section 5 in the UI hierarchy"
+    return 1
+  fi
+  if ! echo "$dump" | grep -qi 'banner overlay'; then
+    echo "Screenshot validation does not see the banner feed slot"
+    return 1
+  fi
   stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
   if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
     echo "Screenshot looks flat (stddev=${stddev}); banner likely not visible"
@@ -391,10 +414,6 @@ assert_banner_screenshot_content() {
   fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qi 'Sponsored (banner overlay)'; then
-    return 0
-  fi
-  if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-    echo "Banner feed_load confirmed in logcat; accepting screenshot (stddev=${stddev})"
     return 0
   fi
   echo "No banner UI or feed_load confirmation for screenshot"
