@@ -207,19 +207,19 @@ private class FeedAdEntry(
             Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_skipped reason=not_debuggable")
             return
         }
-        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER || ciBannerSnapshotScheduled) {
             return
         }
         val host = adHost
         if (host == null || !loaded) {
             return
         }
-        mainHandler.postDelayed({
-            if (ciBannerSnapshotWritten) {
-                return@postDelayed
+        ciBannerSnapshotScheduled = true
+        mainHandler.post {
+            if (!ciBannerSnapshotWritten) {
+                writeCiBannerOverlaySnapshotNow(host)
             }
-            writeCiBannerOverlaySnapshotNow(host)
-        }, 400L)
+        }
     }
 
     private fun writeCiBannerOverlaySnapshotNow(host: View) {

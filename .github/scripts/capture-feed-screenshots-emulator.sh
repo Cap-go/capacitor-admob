@@ -433,8 +433,10 @@ if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 90 0; then
   exit 1
 fi
 
+sleep 3
+
 banner_capture_ok=false
-if wait_for_ci_banner_snapshot 50 && pull_ci_banner_snapshot; then
+if wait_for_ci_banner_snapshot 30 && pull_ci_banner_snapshot; then
   echo "Using native CI banner overlay snapshot from app cache"
   echo "banner_loaded=1" > "$banner_status_file"
   echo "banner_overlay_snapshot=1" >> "$banner_status_file"
@@ -443,6 +445,15 @@ elif capture_banner_in_foreground 15; then
   banner_capture_ok=true
 elif capture_banner_screencap_fallback && inspect_png_not_launcher "$banner_raw"; then
   banner_capture_ok=true
+fi
+
+if [[ "$banner_capture_ok" != true ]]; then
+  if pull_ci_banner_snapshot &&
+    logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+    echo "banner_loaded=1" > "$banner_status_file"
+    echo "banner_overlay_snapshot=1" >> "$banner_status_file"
+    banner_capture_ok=true
+  fi
 fi
 
 if [[ "$banner_capture_ok" != true ]]; then
