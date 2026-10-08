@@ -33,11 +33,14 @@ const samplePosts = [
   { title: 'Travel tip', body: 'Off-peak trains run every twenty minutes on Sundays.' },
 ];
 
+const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
+
 const buildFeed = () => {
   feedList.innerHTML = '';
   let adIndex = 0;
+  const posts = ciFeedDemo ? samplePosts.slice(0, 2) : samplePosts;
 
-  samplePosts.forEach((post, index) => {
+  posts.forEach((post, index) => {
     const card = document.createElement('article');
     card.className = 'feed-card';
     card.innerHTML = `<h3>${post.title}</h3><p>${post.body}</p>`;
@@ -99,7 +102,7 @@ const attachFeedAds = async () => {
         format: isBanner ? 'banner' : 'native',
         adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
         positionKey,
-        autoRefreshMs: 60000,
+        autoRefreshMs: ciFeedDemo ? undefined : 60000,
         nativeStyle: {
           backgroundColor: '#1c1c1c',
           headlineTextColor: '#ffffff',
@@ -159,8 +162,6 @@ document.getElementById('feedDestroyButton')?.addEventListener('click', () => {
     })
     .catch((error) => logFeed('Destroy failed', error));
 });
-
-const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
 
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();

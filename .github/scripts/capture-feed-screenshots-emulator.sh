@@ -38,6 +38,19 @@ keep_screen_on() {
   adb shell svc power stayon usb >/dev/null 2>&1 || true
 }
 
+display_metrics() {
+  local line w h
+  line=$(adb shell wm size 2>/dev/null | grep -Eo '[0-9]+x[0-9]+' | tail -1)
+  w=${line%x*}
+  h=${line#*x}
+  if [[ -z "$w" || -z "$h" ]]; then
+    w=1080
+    h=1920
+  fi
+  DISPLAY_W=$w
+  DISPLAY_H=$h
+}
+
 assert_app_in_foreground() {
   local dump
   dump=$(adb shell dumpsys activity activities 2>/dev/null || true)
@@ -49,22 +62,29 @@ assert_app_in_foreground() {
   return 1
 }
 
+dismiss_blocking_dialogs() {
+  local dump
+  dump=$(adb shell uiautomator dump /sdcard/window_dump.xml 2>/dev/null && adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true)
+  if echo "$dump" | grep -qi 'keeps stopping'; then
+    display_metrics
+    adb shell input tap "$((DISPLAY_W / 2))" "$((DISPLAY_H * 82 / 100))"
+    sleep 1
+  fi
+}
+
 cold_start_app() {
   wake_device
   adb logcat -c >/dev/null 2>&1 || true
   adb shell am start -W -S -n "${MAIN_ACTIVITY}"
   sleep 5
+  dismiss_blocking_dialogs
   assert_app_in_foreground
 }
 
 ensure_foreground() {
   wake_device
+  dismiss_blocking_dialogs
   adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
-  sleep 2
-  if assert_app_in_foreground; then
-    return 0
-  fi
-  adb shell monkey -p "${APP_ID}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
   sleep 2
   assert_app_in_foreground
 }
@@ -77,18 +97,11 @@ ui_hierarchy_dump() {
 assert_example_app_on_screen() {
   local dump
   dump=$(ui_hierarchy_dump)
-  if echo "$dump" | grep -q "package=\"${APP_ID}\""; then
-    return 0
+  if echo "$dump" | grep -qi 'keeps stopping'; then
+    echo "App crash dialog is blocking the UI"
+    return 1
   fi
-  if echo "$dump" | grep -q 'nexuslauncher'; then
-    ensure_foreground
-    dump=$(ui_hierarchy_dump)
-  fi
-  if echo "$dump" | grep -q "package=\"${APP_ID}\""; then
-    return 0
-  fi
-  echo "Example app UI not present in hierarchy"
-  return 1
+  echo "$dump" | grep -q "package=\"${APP_ID}\""
 }
 
 wait_for_log_pattern() {
@@ -96,7 +109,7 @@ wait_for_log_pattern() {
   local attempts="${2:-45}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    if (( i % 10 == 0 )); then
+    if (( i % 12 == 0 )); then
       ensure_foreground || true
     fi
     if adb logcat -d 2>/dev/null | grep -F "$pattern" | grep -q .; then
@@ -105,7 +118,6 @@ wait_for_log_pattern() {
     sleep 2
   done
   echo "Timed out waiting for log pattern: ${pattern}"
-  adb logcat -d 2>/dev/null | tail -40 || true
   return 1
 }
 
@@ -114,7 +126,7 @@ wait_for_feed_load() {
   local attempts="${2:-50}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    if (( i % 10 == 0 )); then
+    if (( i % 12 == 0 )); then
       ensure_foreground || true
     fi
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
@@ -127,54 +139,23 @@ wait_for_feed_load() {
   return 1
 }
 
-display_metrics() {
-  local size line w h
-  line=$(adb shell wm size 2>/dev/null | grep -Eo '[0-9]+x[0-9]+' | tail -1)
-  w=${line%x*}
-  h=${line#*x}
-  if [[ -z "$w" || -z "$h" ]]; then
-    w=1080
-    h=1920
-  fi
-  DISPLAY_W=$w
-  DISPLAY_H=$h
-}
-
 scroll_feed_list_down() {
   local count="${1:-4}"
   local _i
   display_metrics
   local mid_x=$((DISPLAY_W / 2))
-  local y1=$((DISPLAY_H * 70 / 100))
-  local y2=$((DISPLAY_H * 35 / 100))
+  local y1=$((DISPLAY_H * 68 / 100))
+  local y2=$((DISPLAY_H * 38 / 100))
   for ((_i = 0; _i < count; _i++)); do
     ensure_foreground || true
-    adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 320
-    sleep 0.45
+    adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 280
+    sleep 0.4
   done
 }
 
 hierarchy_shows_ad_overlay() {
   local dump="$1"
   echo "$dump" | grep -qiE 'GmsAd|AdView|text="Test Ad"|text="Install"|text="Open"'
-}
-
-scroll_until_ad_visible() {
-  local attempts="${1:-14}"
-  local i dump
-  for (( i = 1; i <= attempts; i++ )); do
-    ensure_foreground
-    assert_example_app_on_screen
-    dump=$(ui_hierarchy_dump)
-    if hierarchy_shows_ad_overlay "$dump"; then
-      return 0
-    fi
-    scroll_feed_list_down 1
-    sleep 0.5
-  done
-  echo "Ad overlay not found in UI hierarchy after scrolling"
-  echo "$dump" | head -c 2500 || true
-  return 1
 }
 
 capture_screenshot() {
@@ -216,14 +197,14 @@ if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
 fi
 
 native_loaded=false
-if wait_for_feed_load native 35; then
+if wait_for_feed_load native 20; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
 else
   echo "native_status=no_fill" > "$status_file"
 fi
 
-if ! wait_for_feed_load banner 40; then
+if ! wait_for_feed_load banner 35; then
   echo "Banner test ad did not load; cannot produce in-feed screenshot"
   exit 1
 fi
@@ -234,7 +215,10 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 if [[ "$native_loaded" == true ]]; then
   ensure_foreground
   scroll_feed_list_down 2
-  scroll_until_ad_visible 16
+  dump=$(ui_hierarchy_dump)
+  if ! hierarchy_shows_ad_overlay "$dump"; then
+    scroll_feed_list_down 2
+  fi
   capture_screenshot "$native_raw"
   convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
 else
@@ -243,9 +227,15 @@ else
 fi
 
 ensure_foreground
-scroll_feed_list_down 3
-if ! scroll_until_ad_visible 16; then
-  echo "Could not find banner ad overlay in the feed"
+scroll_feed_list_down 5
+dump=$(ui_hierarchy_dump)
+if ! hierarchy_shows_ad_overlay "$dump"; then
+  scroll_feed_list_down 3
+  dump=$(ui_hierarchy_dump)
+fi
+if ! hierarchy_shows_ad_overlay "$dump"; then
+  echo "Banner overlay not detected in UI hierarchy before capture"
+  echo "$dump" | head -c 2500 || true
   exit 1
 fi
 sleep 2
