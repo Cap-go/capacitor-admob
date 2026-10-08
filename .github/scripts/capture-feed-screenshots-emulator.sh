@@ -148,7 +148,8 @@ wait_for_overlay_visible() {
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "overlay_visible id=.* format=${format}"; then
       return 0
     fi
-    sleep 2
+    scroll_feed_list_down 1
+    sleep 0.8
   done
   echo "Timed out waiting for overlay_visible format=${format}"
   adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
@@ -208,7 +209,7 @@ if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
 fi
 
 native_loaded=false
-if wait_for_feed_load native 20; then
+if wait_for_feed_load native 10; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
 else
