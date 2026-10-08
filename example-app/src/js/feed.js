@@ -134,22 +134,15 @@ const attachFeedAds = async () => {
 
     if (ciFeedDemo) {
       const bannerSlots = slots.filter((slot) => slot.classList.contains('banner'));
-      const nativeSlots = slots.filter((slot) => !slot.classList.contains('banner'));
 
       for (const slot of bannerSlots) {
         await attachSlot(slot);
       }
 
-      void (async () => {
-        for (const slot of nativeSlots) {
-          const attached = await attachSlot(slot);
-          if (!attached) {
-            continue;
-          }
-          slot.scrollIntoView({ block: 'center', behavior: 'instant' });
-          console.info('CAPGO_CI_NATIVE_SLOT_READY');
-        }
-      })();
+      scrollFeedSectionIntoView();
+      const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
+      bannerSlot?.scrollIntoView({ block: 'center', behavior: 'auto' });
+      console.info('CAPGO_CI_BANNER_SLOT_READY');
       return;
     }
 
@@ -196,7 +189,7 @@ document.getElementById('feedDestroyButton')?.addEventListener('click', () => {
 });
 
 const scrollFeedSectionIntoView = () => {
-  document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'auto' });
 };
 
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
@@ -207,15 +200,6 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
     await new Promise((resolve) => window.setTimeout(resolve, 800));
     scrollFeedSectionIntoView();
     console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
-    try {
-      await attachFeedAds();
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-      scrollFeedSectionIntoView();
-      feedList.querySelector('.feed-ad-slot.banner')?.scrollIntoView({ block: 'center', behavior: 'instant' });
-      await new Promise((resolve) => window.setTimeout(resolve, 400));
-      console.info('CAPGO_CI_BANNER_SLOT_READY');
-    } catch (error) {
-      logFeed('CI feed setup failed', error);
-    }
+    attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
   }, 8000);
 }

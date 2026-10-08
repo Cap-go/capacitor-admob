@@ -194,19 +194,15 @@ wait_for_native_slot_ready() {
 
 scroll_webview_to_feed_section() {
   local dump attempt
-  display_metrics
-  local mid_x=$((DISPLAY_W / 2))
-  local y1=$((DISPLAY_H * 72 / 100))
-  local y2=$((DISPLAY_H * 28 / 100))
-  for attempt in $(seq 1 14); do
+  for attempt in $(seq 1 16); do
+    assert_app_in_foreground
     dump=$(ui_hierarchy_dump)
     if echo "$dump" | grep -qE 'In-Feed|Sponsored \(banner'; then
       return 0
     fi
     if echo "$dump" | grep -q 'SDK Setup'; then
-      adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 320
-      sleep 0.45
-      maybe_recover_foreground || true
+      adb shell input keyevent 93
+      sleep 0.4
       continue
     fi
     return 0
