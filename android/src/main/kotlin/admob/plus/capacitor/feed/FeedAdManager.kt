@@ -193,7 +193,7 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
-                    maybeWriteCiBannerOverlaySnapshot(host, w, h)
+                    writeCiBannerOverlaySnapshotNow(host, w, h)
                 }
             } else if (
                 visible &&
@@ -203,28 +203,13 @@ private class FeedAdEntry(
                 w > 40 &&
                 h > 20
             ) {
-                maybeWriteCiBannerOverlaySnapshot(host, w, h)
-            }
-        }
-    }
-
-    private fun maybeWriteCiBannerOverlaySnapshot(host: View, layoutW: Int, layoutH: Int) {
-        val isDebuggable =
-            (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
-            return
-        }
-        host.post {
-            if (!ciBannerSnapshotWritten) {
-                writeCiBannerOverlaySnapshotNow(host, layoutW, layoutH)
+                writeCiBannerOverlaySnapshotNow(host, w, h)
             }
         }
     }
 
     private fun scheduleCiBannerOverlaySnapshotAfterLoad() {
-        val isDebuggable =
-            (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
@@ -233,7 +218,7 @@ private class FeedAdEntry(
             val w = host.width.takeIf { it > 20 } ?: lp?.width ?: 0
             val h = host.height.takeIf { it > 10 } ?: lp?.height ?: 0
             if (w > 20 && h > 10) {
-                maybeWriteCiBannerOverlaySnapshot(host, w, h)
+                mainHandler.post { writeCiBannerOverlaySnapshotNow(host, w, h) }
             }
         }
         val delaysMs = longArrayOf(150L, 400L, 900L, 1_600L, 2_400L)

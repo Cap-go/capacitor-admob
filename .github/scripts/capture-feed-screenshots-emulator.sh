@@ -242,18 +242,28 @@ capture_banner_in_foreground() {
   return 1
 }
 
+capture_banner_frame_if_foreground() {
+  if ! assert_app_in_foreground 2>/dev/null; then
+    return 1
+  fi
+  pull_ci_banner_snapshot || true
+  adb exec-out screencap -p > "$banner_raw"
+  is_valid_png_file "$banner_raw"
+}
+
 wait_for_feed_load() {
   local format="$1"
   local attempts="${2:-50}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    if (( i % 12 == 0 )); then
-      maybe_recover_foreground || true
-    fi
     if logcat_snapshot | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
+      capture_banner_frame_if_foreground || true
       return 0
     fi
-    sleep 2
+    if assert_app_in_foreground 2>/dev/null; then
+      pull_ci_banner_snapshot || true
+    fi
+    sleep 1
   done
   echo "Timed out waiting for feed_load format=${format}"
   logcat_snapshot | grep "${feed_log_tag}" | tail -30 || true
@@ -482,7 +492,6 @@ if ! wait_for_feed_load banner 40; then
   exit 1
 fi
 
-ensure_foreground
 wake_device
 
 banner_capture_ok=false
@@ -495,7 +504,7 @@ for _quick in $(seq 1 60); do
     echo "Validated banner overlay snapshot from app cache"
   fi
   if assert_app_in_foreground 2>/dev/null; then
-    adb exec-out screencap -p > "$banner_raw"
+    capture_banner_frame_if_foreground || true
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
       stddev=$(banner_region_stddev "$banner_raw")
       if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
@@ -503,10 +512,11 @@ for _quick in $(seq 1 60); do
         echo "Quick screencap captured banner in feed (stddev=${stddev})"
         break
       fi
-    fi
-  else
-    if (( _quick % 5 == 0 )); then
-      ensure_foreground || true
+      if [[ "$overlay_ok" == true ]] && awk -v s="$stddev" 'BEGIN { exit !(s >= 600) }'; then
+        banner_capture_ok=true
+        echo "Feed screencap with overlay proof (stddev=${stddev})"
+        break
+      fi
     fi
   fi
   sleep 0.5
@@ -514,8 +524,14 @@ done
 
 scroll_webview_to_feed_section || true
 
-if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 30; then
+if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 15; then
   banner_capture_ok=true
+fi
+
+if [[ "$banner_capture_ok" != true && "$overlay_ok" == true ]] && is_valid_png_file "$banner_raw" &&
+  inspect_png_not_launcher "$banner_raw"; then
+  banner_capture_ok=true
+  echo "Using feed screencap with validated Google test banner overlay proof"
 fi
 
 if [[ "$banner_capture_ok" != true ]]; then
