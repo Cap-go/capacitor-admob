@@ -193,41 +193,45 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
-                    writeCiBannerSnapshotIfNeeded(webView)
+                    writeCiBannerSnapshotIfNeeded()
                 }
             }
         }
     }
 
-    private fun writeCiBannerSnapshotIfNeeded(webView: WebView) {
+    private fun writeCiBannerSnapshotIfNeeded() {
         val isDebuggable =
             (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+        if (!isDebuggable) {
+            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_skipped reason=not_debuggable")
+            return
+        }
+        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
         ciBannerSnapshotWritten = true
-        mainHandler.post {
-            var bitmap: Bitmap? = null
-            try {
-                val root = plugin.activity.window.decorView.rootView
-                val width = root.width.coerceAtLeast(1)
-                val height = root.height.coerceAtLeast(1)
-                bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bitmap)
-                root.draw(canvas)
-                val file = File(plugin.context.cacheDir, "ci_feed_banner.png")
-                FileOutputStream(file).use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
-                Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_written path=${file.absolutePath}")
-            } catch (e: Exception) {
-                Log.i(
-                    FEED_SCREENSHOT_LOG_TAG,
-                    "ci_banner_snapshot_failed message=${e.message}",
-                )
-            } finally {
-                bitmap?.recycle()
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
+        var bitmap: Bitmap? = null
+        try {
+            val activity = plugin.activity ?: throw IllegalStateException("activity is null")
+            val root = activity.window.decorView.rootView
+            val width = root.width.coerceAtLeast(1)
+            val height = root.height.coerceAtLeast(1)
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            root.draw(canvas)
+            val file = File(plugin.context.cacheDir, "ci_feed_banner.png")
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
+            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_written path=${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.i(
+                FEED_SCREENSHOT_LOG_TAG,
+                "ci_banner_snapshot_failed message=${e.message}",
+            )
+        } finally {
+            bitmap?.recycle()
         }
     }
 
