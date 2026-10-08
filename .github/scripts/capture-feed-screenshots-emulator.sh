@@ -484,11 +484,13 @@ scroll_webview_to_feed_section || true
 
 banner_capture_ok=false
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
-if wait_for_ci_banner_snapshot 45 && pull_ci_banner_snapshot && cp "$banner_raw" "$overlay_proof" && validate_overlay_banner_png "$overlay_proof"; then
-  echo "Validated banner overlay snapshot from app cache"
-fi
-
-  for _quick in 1 2 3 4 5 6 8 10 12 15; do
+overlay_ok=false
+for _quick in $(seq 1 35); do
+  if pull_ci_banner_snapshot && validate_overlay_banner_png "$banner_raw"; then
+    cp "$banner_raw" "$overlay_proof"
+    overlay_ok=true
+    echo "Validated banner overlay snapshot from app cache"
+  fi
   if assert_app_in_foreground 2>/dev/null; then
     adb exec-out screencap -p > "$banner_raw"
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
@@ -499,6 +501,8 @@ fi
         break
       fi
     fi
+  else
+    adb shell am start -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
   fi
   sleep 1
 done
@@ -517,7 +521,7 @@ if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=ba
   echo "banner_loaded=1" > "$banner_status_file"
 fi
 
-if [[ ! -f "$overlay_proof" ]] || ! validate_overlay_banner_png "$overlay_proof"; then
+if [[ "$overlay_ok" != true ]] || [[ ! -f "$overlay_proof" ]] || ! validate_overlay_banner_png "$overlay_proof"; then
   echo "Missing validated banner overlay proof PNG (Google test ad pixels)"
   exit 1
 fi

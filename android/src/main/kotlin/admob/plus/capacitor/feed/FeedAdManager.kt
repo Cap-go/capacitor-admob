@@ -122,7 +122,6 @@ private class FeedAdEntry(
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
-    private var ciBannerSnapshotScheduled = false
 
     val isLoaded: Boolean
         get() = loaded
@@ -139,7 +138,6 @@ private class FeedAdEntry(
         bannerAdView?.destroy()
         bannerAdView = null
         loaded = false
-        ciBannerSnapshotScheduled = false
     }
 
     fun setAutoRefresh(autoRefreshMs: Int?) {
@@ -195,34 +193,25 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
-                    writeCiBannerOverlaySnapshotIfNeeded()
                 }
             }
         }
     }
 
-    private fun writeCiBannerOverlaySnapshotIfNeeded() {
+    private fun scheduleCiBannerOverlaySnapshotAfterLoad() {
         val isDebuggable =
             (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        if (!isDebuggable) {
-            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_skipped reason=not_debuggable")
+        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
-        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER || ciBannerSnapshotScheduled) {
-            return
-        }
-        val host = adHost
-        if (host == null || !loaded) {
-            return
-        }
-        ciBannerSnapshotScheduled = true
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
         mainHandler.postDelayed(
             {
                 if (!ciBannerSnapshotWritten) {
                     adHost?.let { writeCiBannerOverlaySnapshotNow(it) }
                 }
             },
-            1_500L,
+            2_500L,
         )
     }
 
@@ -423,6 +412,7 @@ private class FeedAdEntry(
                     assets.put("height", adSize.height)
                     emitFeed(Generated.Events.FEED_LOAD, assets)
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load id=$id format=banner")
+                    scheduleCiBannerOverlaySnapshotAfterLoad()
                     finishLoad(null)
                 }
 
