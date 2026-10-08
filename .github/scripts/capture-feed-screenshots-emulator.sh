@@ -77,7 +77,9 @@ dismiss_blocking_dialogs() {
 
 cold_start_app() {
   wake_device
-  adb logcat -c >/dev/null 2>&1 || true
+  if [[ "${SKIP_LOGCAT_CLEAR:-}" != "1" ]]; then
+    adb logcat -c >/dev/null 2>&1 || true
+  fi
   adb shell am start -W -S -n "${MAIN_ACTIVITY}"
   sleep 5
   dismiss_blocking_dialogs
@@ -294,50 +296,30 @@ assert_banner_screenshot_content() {
   return 0
 }
 
-wait_and_capture_banner() {
-  local timeout_s="${1:-75}"
-  local start_ts end_ts
-  start_ts=$(date +%s)
-  while true; do
-    end_ts=$(date +%s)
-    if (( end_ts - start_ts > timeout_s )); then
-      echo "Timed out waiting to capture banner in feed"
-      return 1
-    fi
-    if ! assert_app_in_foreground 2>/dev/null; then
-      ensure_foreground || true
-      sleep 1
-      continue
-    fi
-    if recent_logcat | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+run_banner_capture_sidecar() {
+  stdbuf -oL adb logcat -v brief CapgoAdmobFeed:I Capacitor/Console:I *:S 2>/dev/null | while IFS= read -r line; do
+    if [[ "$line" == *"feed_load id="* ]] && [[ "$line" == *"format=banner"* ]]; then
       echo "banner_loaded=1" > "$banner_status_file"
     fi
-    if [[ ! -f "$banner_status_file" ]]; then
-      sleep 0.25
+    if [[ "$line" != *"ci_banner_slot_ready"* ]] && [[ "$line" != *"CAPGO_CI_BANNER_SLOT_READY"* ]]; then
       continue
     fi
-    if ! recent_logcat | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
-      sleep 0.25
-      continue
-    fi
+    sleep 0.4
     wake_device
-    adb exec-out screencap -p > "$banner_raw"
+    adb exec-out screencap -p > "$banner_raw" || true
+    if [[ ! -s "$banner_raw" ]]; then
+      continue
+    fi
     convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
     if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
-      return 0
+      exit 0
     fi
-    sleep 0.35
   done
+  exit 1
 }
 
 adb install -r "$apk_path"
 keep_screen_on
-cold_start_app
-
-if ! wait_for_log_pattern "$CI_FEED_MARKER" 40; then
-  echo "Feed section never became visible in logcat"
-  exit 1
-fi
 
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
@@ -345,8 +327,33 @@ native_loaded=false
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
-if ! wait_and_capture_banner 75; then
+adb logcat -c >/dev/null 2>&1 || true
+SKIP_LOGCAT_CLEAR=1 run_banner_capture_sidecar &
+CAPTURE_PID=$!
+
+SKIP_LOGCAT_CLEAR=1 cold_start_app
+
+capture_deadline=$(( $(date +%s) + 90 ))
+capture_exit=1
+while kill -0 "$CAPTURE_PID" 2>/dev/null; do
+  if (( $(date +%s) >= capture_deadline )); then
+    kill "$CAPTURE_PID" 2>/dev/null || true
+    echo "Timed out waiting for banner capture sidecar"
+    break
+  fi
+  sleep 1
+done
+if wait "$CAPTURE_PID" 2>/dev/null; then
+  capture_exit=0
+fi
+
+if [[ "$capture_exit" -ne 0 ]] || [[ ! -f "$screenshots_dir/feed-banner-in-feed.png" ]]; then
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
+  exit 1
+fi
+
+if ! logcat_snapshot | grep -F "$CI_FEED_MARKER" | grep -q .; then
+  echo "Feed section marker never appeared in logcat"
   exit 1
 fi
 
