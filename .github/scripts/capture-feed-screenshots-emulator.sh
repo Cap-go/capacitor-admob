@@ -208,17 +208,18 @@ if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
   exit 1
 fi
 
+echo "native_status=no_fill" > "$status_file"
 native_loaded=false
-if wait_for_feed_load native 10; then
-  native_loaded=true
-  echo "native_status=loaded" > "$status_file"
-else
-  echo "native_status=no_fill" > "$status_file"
-fi
 
-if ! wait_for_feed_load banner 35; then
+if ! wait_for_feed_load banner 45; then
   echo "Banner test ad did not load; cannot produce in-feed screenshot"
   exit 1
+fi
+
+sleep 5
+if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
+  native_loaded=true
+  echo "native_status=loaded" > "$status_file"
 fi
 
 native_raw="$screenshots_dir/feed-native-raw.png"
@@ -226,12 +227,12 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 
 if [[ "$native_loaded" == true ]]; then
   ensure_foreground
-  scroll_feed_list_down 2
-  if wait_for_overlay_visible native 30; then
+  scroll_feed_list_down 3
+  if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=native'; then
     capture_screenshot "$native_raw"
     convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
   else
-    echo "Native overlay never became visible; skipping native screenshot"
+    echo "Native overlay not visible; skipping native screenshot"
     echo "native_status=no_fill" > "$status_file"
     rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
   fi
@@ -241,13 +242,12 @@ else
 fi
 
 ensure_foreground
-scroll_feed_list_down 2
-if ! wait_for_overlay_visible banner 35; then
-  echo "Banner overlay never became visible on screen"
+scroll_feed_list_down 16
+sleep 3
+if ! adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=banner'; then
+  echo "Banner overlay_visible marker missing after scroll"
   exit 1
 fi
-scroll_feed_list_down 12
-sleep 2
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
