@@ -115,6 +115,7 @@ private class FeedAdEntry(
     private var refreshRunnable: Runnable? = null
     private var loadCallback: ((String?) -> Unit)? = null
     private var nativeNoFillRetries = 0
+    private var overlayVisibleLogged = false
 
     val isLoaded: Boolean
         get() = loaded
@@ -178,6 +179,11 @@ private class FeedAdEntry(
             host.layoutParams = params
             host.visibility = if (visible && loaded) View.VISIBLE else View.INVISIBLE
             host.bringToFront()
+            if (visible && loaded && !overlayVisibleLogged && w > 40 && h > 20) {
+                overlayVisibleLogged = true
+                val formatLabel = if (format == FeedAdFormat.BANNER) "banner" else "native"
+                Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
+            }
         }
     }
 

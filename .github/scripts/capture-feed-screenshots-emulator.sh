@@ -139,6 +139,23 @@ wait_for_feed_load() {
   return 1
 }
 
+wait_for_overlay_visible() {
+  local format="$1"
+  local attempts="${2:-40}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    ensure_foreground || true
+    if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "overlay_visible id=.* format=${format}"; then
+      return 0
+    fi
+    scroll_feed_list_down 1
+    sleep 1
+  done
+  echo "Timed out waiting for overlay_visible format=${format}"
+  adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
+  return 1
+}
+
 scroll_feed_list_down() {
   local count="${1:-4}"
   local _i
@@ -151,11 +168,6 @@ scroll_feed_list_down() {
     adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 280
     sleep 0.4
   done
-}
-
-hierarchy_shows_ad_overlay() {
-  local dump="$1"
-  echo "$dump" | grep -qiE 'GmsAd|AdView|text="Test Ad"|text="Install"|text="Open"'
 }
 
 capture_screenshot() {
@@ -215,27 +227,23 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 if [[ "$native_loaded" == true ]]; then
   ensure_foreground
   scroll_feed_list_down 2
-  dump=$(ui_hierarchy_dump)
-  if ! hierarchy_shows_ad_overlay "$dump"; then
-    scroll_feed_list_down 2
+  if wait_for_overlay_visible native 30; then
+    capture_screenshot "$native_raw"
+    convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
+  else
+    echo "Native overlay never became visible; skipping native screenshot"
+    echo "native_status=no_fill" > "$status_file"
+    rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
   fi
-  capture_screenshot "$native_raw"
-  convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
 else
   echo "Skipping native screenshot (test unit no-fill on this emulator run)"
   rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
 fi
 
 ensure_foreground
-scroll_feed_list_down 5
-dump=$(ui_hierarchy_dump)
-if ! hierarchy_shows_ad_overlay "$dump"; then
-  scroll_feed_list_down 3
-  dump=$(ui_hierarchy_dump)
-fi
-if ! hierarchy_shows_ad_overlay "$dump"; then
-  echo "Banner overlay not detected in UI hierarchy before capture"
-  echo "$dump" | head -c 2500 || true
+scroll_feed_list_down 3
+if ! wait_for_overlay_visible banner 35; then
+  echo "Banner overlay never became visible on screen"
   exit 1
 fi
 sleep 2
