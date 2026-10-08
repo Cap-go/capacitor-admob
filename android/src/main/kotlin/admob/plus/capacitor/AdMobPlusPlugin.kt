@@ -191,11 +191,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             return
         }
         val positionKey = call.getString("positionKey")
-        val autoRefreshMs = if (call.data.has("autoRefreshMs") && !call.data.isNull("autoRefreshMs")) {
-            call.getInt("autoRefreshMs")
-        } else {
-            null
-        }
+        val autoRefreshMs = if (call.data.has("autoRefreshMs")) call.getInt("autoRefreshMs") else null
         val nativeStyle = mutableMapOf<String, String>()
         val styleObj = call.getObject("nativeStyle")
         if (styleObj != null) {
@@ -280,11 +276,7 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
             call.reject("id is required")
             return
         }
-        val autoRefreshMs = if (call.data.has("autoRefreshMs") && !call.data.isNull("autoRefreshMs")) {
-            call.getInt("autoRefreshMs")
-        } else {
-            null
-        }
+        val autoRefreshMs = if (call.data.has("autoRefreshMs")) call.getInt("autoRefreshMs") else null
         feedAdManager!!.setAutoRefresh(id, autoRefreshMs)
         call.resolve()
     }

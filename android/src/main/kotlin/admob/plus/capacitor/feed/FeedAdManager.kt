@@ -214,8 +214,8 @@ private class FeedAdEntry(
         assets.put("advertiser", ad.advertiser ?: "")
         assets.put("price", ad.price ?: "")
         assets.put("store", ad.store ?: "")
-        assets.put("starRating", ad.starRating ?: 0.0)
-        assets.put("mediaAspectRatio", ad.mediaContent?.aspectRatio ?: 0.0)
+        ad.starRating?.let { assets.put("starRating", it) }
+        ad.mediaContent?.aspectRatio?.let { assets.put("mediaAspectRatio", it) }
         emitFeed(Generated.Events.FEED_LOAD, assets)
         finishLoad(null)
     }
