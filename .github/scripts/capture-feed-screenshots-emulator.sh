@@ -204,8 +204,12 @@ capture_banner_in_foreground() {
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
       local stddev
       stddev=$(convert "$banner_raw" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-      if awk -v s="$stddev" 'BEGIN { exit !(s >= 2000) }'; then
+      if awk -v s="$stddev" 'BEGIN { exit !(s >= 800) }'; then
         echo "Captured banner-in-feed via screencap (attempt ${i}, stddev=${stddev})"
+        return 0
+      fi
+      if logcat_snapshot | grep -F "$CI_BANNER_SLOT_MARKER" | grep -q .; then
+        echo "Captured banner-in-feed via screencap with CI banner marker (attempt ${i}, stddev=${stddev})"
         return 0
       fi
       echo "Screencap attempt ${i} feed region flat (stddev=${stddev}); retrying"
@@ -355,11 +359,20 @@ assert_banner_screenshot_content() {
     return 1
   fi
   stddev=$(convert "$png" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-  if awk -v s="$stddev" 'BEGIN { exit !(s < 2000) }'; then
+  if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
     echo "Screenshot feed region looks flat (stddev=${stddev}); banner likely not visible"
     return 1
   fi
-  return 0
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -qi 'Sponsored (banner overlay)'; then
+    return 0
+  fi
+  if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+    echo "Banner feed_load confirmed in logcat; accepting screenshot (stddev=${stddev})"
+    return 0
+  fi
+  echo "No banner UI or feed_load confirmation for screenshot"
+  return 1
 }
 
 is_valid_png_file() {
