@@ -216,7 +216,6 @@ const scrollFeedSectionIntoView = () => {
 
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
-  void CapacitorUpdater.notifyAppReady().catch(() => undefined);
   window.setTimeout(async () => {
     scrollFeedSectionIntoView();
     await new Promise((resolve) => window.setTimeout(resolve, 800));
