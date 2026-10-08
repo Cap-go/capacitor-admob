@@ -10,7 +10,6 @@ MAIN_ACTIVITY="${APP_ID}/.MainActivity"
 CI_FEED_MARKER="CAPGO_CI_FEED_SECTION_VISIBLE"
 CI_BANNER_SLOT_MARKER="CAPGO_CI_BANNER_SLOT_READY"
 CI_NATIVE_SLOT_MARKER="CAPGO_CI_NATIVE_SLOT_READY"
-FEED_SECTION_UI_TEXT="In-Feed Native and Banner"
 
 mkdir -p "$screenshots_dir"
 status_file="$screenshots_dir/native-ad-status.txt"
@@ -112,12 +111,9 @@ assert_example_app_on_screen() {
     echo "UI hierarchy is not from ${APP_ID}"
     return 1
   fi
-  if ! echo "$dump" | grep -q "${FEED_SECTION_UI_TEXT}"; then
-    echo "Feed section (section 5) is not visible in the UI hierarchy"
-    return 1
-  fi
-  if echo "$dump" | grep -qi 'nexuslauncher\|Launcher'; then
-    echo "Launcher UI detected instead of the example app"
+  # WebView HTML is often not exposed in the accessibility tree; rely on resumed activity + markers.
+  if echo "$dump" | grep -qE 'package="com\.google\.android\.apps\.nexuslauncher"'; then
+    echo "Launcher is in the UI hierarchy instead of the example app"
     return 1
   fi
 }
