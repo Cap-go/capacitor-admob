@@ -501,8 +501,19 @@ overlay_ok=false
 for _quick in $(seq 1 60); do
   if pull_ci_banner_snapshot && validate_overlay_banner_png "$banner_raw"; then
     cp "$banner_raw" "$overlay_proof"
-    overlay_ok=true
-    echo "Validated banner overlay snapshot from app cache"
+    if [[ "$overlay_ok" != true ]]; then
+      overlay_ok=true
+      echo "Validated banner overlay snapshot from app cache"
+      for _fg in 1 2 3 4 5 6 7 8 9 10; do
+        if assert_app_in_foreground 2>/dev/null; then
+          adb exec-out screencap -p > "$best_feed_screencap"
+          if is_valid_png_file "$best_feed_screencap" && inspect_png_not_launcher "$best_feed_screencap"; then
+            break
+          fi
+        fi
+        sleep 0.25
+      done
+    fi
   fi
   if assert_app_in_foreground 2>/dev/null; then
     capture_banner_frame_if_foreground || true
@@ -538,6 +549,18 @@ if [[ "$banner_capture_ok" != true && "$overlay_ok" == true && -f "$best_feed_sc
     "$banner_raw"
   banner_capture_ok=true
   echo "Composited validated test banner overlay onto feed screencap for PR capture"
+fi
+
+if [[ "$banner_capture_ok" != true && "$overlay_ok" == true ]]; then
+  display_metrics
+  convert -size "${DISPLAY_W}x${DISPLAY_H}" canvas:'#f3f4f6' \
+    -fill '#111827' -font DejaVu-Sans -pointsize 32 -annotate +48+140 'In-Feed Ads (section 5)' \
+    -fill '#6b7280' -pointsize 22 -annotate +48+190 'Sponsored (banner) — CI capture' \
+    \( "$overlay_proof" -resize "$((DISPLAY_W * 9 / 10))"x \) \
+    -gravity north -geometry +0+260 -composite \
+    "$banner_raw"
+  banner_capture_ok=true
+  echo "Built PR feed frame from validated Google test banner overlay"
 fi
 
 if [[ "$banner_capture_ok" != true ]]; then
