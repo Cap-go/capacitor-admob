@@ -65,6 +65,47 @@ const buildFeed = () => {
   feedList.appendChild(bannerSlot);
 };
 
+const attachSlot = async (slot) => {
+  const placeholder = slot.querySelector('.feed-ad-placeholder');
+  if (!placeholder) {
+    return false;
+  }
+
+  const isBanner = slot.classList.contains('banner');
+  const positionKey = `feed-slot-${slot.dataset.adIndex}`;
+  if (attachedFeedSlotKeys.has(positionKey)) {
+    return false;
+  }
+
+  const feedAd = new FeedAd({
+    format: isBanner ? 'banner' : 'native',
+    adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
+    positionKey,
+    autoRefreshMs: ciFeedDemo ? undefined : 60000,
+    nativeStyle: {
+      backgroundColor: '#1c1c1c',
+      headlineTextColor: '#ffffff',
+      bodyTextColor: '#d0d0d0',
+      ctaBackgroundColor: '#2563eb',
+      ctaTextColor: '#ffffff',
+    },
+  });
+
+  try {
+    await feedAd.attachTo(placeholder);
+    feedAds.push(feedAd);
+    attachedFeedSlotKeys.add(positionKey);
+    const minHeight = isBanner ? 60 : 280;
+    placeholder.style.minHeight = `${minHeight}px`;
+    logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
+    return true;
+  } catch (error) {
+    await feedAd.destroy().catch(() => undefined);
+    logFeed(`Failed to attach ${positionKey}`, error);
+    return false;
+  }
+};
+
 const attachFeedAds = async () => {
   if (!Capacitor.isNativePlatform()) {
     logFeed('Feed overlays require a native build. Placeholders are still visible on web.');
@@ -91,38 +132,32 @@ const attachFeedAds = async () => {
   try {
     await AdMob.start();
 
-    for (const slot of slots) {
-      const placeholder = slot.querySelector('.feed-ad-placeholder');
-      if (!placeholder) continue;
+    if (ciFeedDemo) {
+      const bannerSlots = slots.filter((slot) => slot.classList.contains('banner'));
+      const nativeSlots = slots.filter((slot) => !slot.classList.contains('banner'));
 
-      const isBanner = slot.classList.contains('banner');
-      const positionKey = `feed-slot-${slot.dataset.adIndex}`;
-
-      const feedAd = new FeedAd({
-        format: isBanner ? 'banner' : 'native',
-        adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
-        positionKey,
-        autoRefreshMs: ciFeedDemo ? undefined : 60000,
-        nativeStyle: {
-          backgroundColor: '#1c1c1c',
-          headlineTextColor: '#ffffff',
-          bodyTextColor: '#d0d0d0',
-          ctaBackgroundColor: '#2563eb',
-          ctaTextColor: '#ffffff',
-        },
-      });
-
-      try {
-        await feedAd.attachTo(placeholder);
-        feedAds.push(feedAd);
-        attachedFeedSlotKeys.add(positionKey);
-        const minHeight = isBanner ? 60 : 280;
-        placeholder.style.minHeight = `${minHeight}px`;
-        logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
-      } catch (error) {
-        await feedAd.destroy().catch(() => undefined);
-        logFeed(`Failed to attach ${positionKey}`, error);
+      for (const slot of bannerSlots) {
+        await attachSlot(slot);
       }
+      const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
+      bannerSlot?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      console.info('CAPGO_CI_BANNER_SLOT_READY');
+
+      void (async () => {
+        for (const slot of nativeSlots) {
+          const attached = await attachSlot(slot);
+          if (!attached) {
+            continue;
+          }
+          slot.scrollIntoView({ block: 'center', behavior: 'instant' });
+          console.info('CAPGO_CI_NATIVE_SLOT_READY');
+        }
+      })();
+      return;
+    }
+
+    for (const slot of slots) {
+      await attachSlot(slot);
     }
   } finally {
     feedAttachInProgress = false;
@@ -167,14 +202,8 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
   void CapacitorUpdater.notifyAppReady().catch(() => undefined);
   window.setTimeout(() => {
-    document.getElementById('feedSection')?.scrollIntoView({ block: 'start' });
+    document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'instant' });
     console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
-    attachFeedAds()
-      .then(() => {
-        const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
-        bannerSlot?.scrollIntoView({ block: 'center' });
-        console.info('CAPGO_CI_BANNER_SLOT_READY');
-      })
-      .catch((error) => logFeed('CI feed setup failed', error));
+    attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
   }, 6000);
 }

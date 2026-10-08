@@ -10,6 +10,7 @@ MAIN_ACTIVITY="${APP_ID}/.MainActivity"
 CI_FEED_MARKER="CAPGO_CI_FEED_SECTION_VISIBLE"
 CI_BANNER_SLOT_MARKER="CAPGO_CI_BANNER_SLOT_READY"
 CI_NATIVE_SLOT_MARKER="CAPGO_CI_NATIVE_SLOT_READY"
+FEED_SECTION_UI_TEXT="In-Feed Native and Banner"
 
 mkdir -p "$screenshots_dir"
 status_file="$screenshots_dir/native-ad-status.txt"
@@ -96,6 +97,10 @@ ui_hierarchy_dump() {
   adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true
 }
 
+logcat_snapshot() {
+  adb logcat -d 2>/dev/null || true
+}
+
 assert_example_app_on_screen() {
   local dump
   dump=$(ui_hierarchy_dump)
@@ -103,7 +108,18 @@ assert_example_app_on_screen() {
     echo "App crash dialog is blocking the UI"
     return 1
   fi
-  echo "$dump" | grep -q "package=\"${APP_ID}\""
+  if ! echo "$dump" | grep -q "package=\"${APP_ID}\""; then
+    echo "UI hierarchy is not from ${APP_ID}"
+    return 1
+  fi
+  if ! echo "$dump" | grep -q "${FEED_SECTION_UI_TEXT}"; then
+    echo "Feed section (section 5) is not visible in the UI hierarchy"
+    return 1
+  fi
+  if echo "$dump" | grep -qi 'nexuslauncher\|Launcher'; then
+    echo "Launcher UI detected instead of the example app"
+    return 1
+  fi
 }
 
 wait_for_log_pattern() {
@@ -114,7 +130,7 @@ wait_for_log_pattern() {
     if (( i % 12 == 0 )); then
       ensure_foreground || true
     fi
-    if adb logcat -d 2>/dev/null | grep -F "$pattern" | grep -q .; then
+    if logcat_snapshot | grep -F "$pattern" | grep -q .; then
       return 0
     fi
     sleep 2
@@ -131,51 +147,51 @@ wait_for_feed_load() {
     if (( i % 12 == 0 )); then
       ensure_foreground || true
     fi
-    if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
+    if logcat_snapshot | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
       return 0
     fi
     sleep 2
   done
   echo "Timed out waiting for feed_load format=${format}"
-  adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
+  logcat_snapshot | grep "${feed_log_tag}" | tail -30 || true
   return 1
 }
 
-wait_for_overlay_visible() {
-  local format="$1"
-  local attempts="${2:-40}"
+wait_for_banner_slot_ready() {
+  local attempts="${1:-40}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if (( i % 10 == 0 )); then
+      ensure_foreground || true
+    fi
+    if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|overlay_visible id=.* format=banner" | grep -q .; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Timed out waiting for banner slot readiness markers"
+  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
+  return 1
+}
+
+wait_for_native_slot_ready() {
+  local attempts="${1:-25}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
     ensure_foreground || true
-    if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "overlay_visible id=.* format=${format}"; then
+    if logcat_snapshot | grep -E "${CI_NATIVE_SLOT_MARKER}|overlay_visible id=.* format=native" | grep -q .; then
       return 0
     fi
-    scroll_feed_list_down 1
-    sleep 0.8
+    sleep 2
   done
-  echo "Timed out waiting for overlay_visible format=${format}"
-  adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
   return 1
-}
-
-scroll_feed_list_down() {
-  local count="${1:-4}"
-  local _i
-  display_metrics
-  local mid_x=$((DISPLAY_W / 2))
-  local y1=$((DISPLAY_H * 58 / 100))
-  local y2=$((DISPLAY_H * 46 / 100))
-  for ((_i = 0; _i < count; _i++)); do
-    adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 280
-    sleep 0.35
-  done
 }
 
 capture_screenshot() {
   local outfile="$1"
   ensure_foreground
   assert_example_app_on_screen
-  sleep 0.75
+  sleep 1
   adb exec-out screencap -p > "$outfile"
   if [[ ! -s "$outfile" ]]; then
     echo "Empty screenshot at ${outfile}"
@@ -200,6 +216,18 @@ validate_png_pair() {
   return 0
 }
 
+inspect_png_not_launcher() {
+  local png="$1"
+  # Launcher/home frames are mostly dark wallpaper with a bright search bar strip near the top.
+  local stats
+  stats=$(convert "$png" -crop 90%x12%+5%+8% -format "%[mean]" info: 2>/dev/null || echo "")
+  if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit (m > 45000) }'; then
+    echo "Screenshot ${png} looks like the Android launcher (bright status/search band)"
+    return 1
+  fi
+  return 0
+}
+
 adb install -r "$apk_path"
 keep_screen_on
 cold_start_app
@@ -212,38 +240,40 @@ fi
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
 
-if ! wait_for_feed_load banner 45; then
+if ! wait_for_feed_load banner 50; then
   echo "Banner test ad did not load; cannot produce in-feed screenshot"
   exit 1
 fi
 
-sleep 5
-if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
+if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
 fi
 
-native_raw="$screenshots_dir/feed-native-raw.png"
-banner_raw="$screenshots_dir/feed-banner-raw.png"
+if ! wait_for_banner_slot_ready 45; then
+  echo "Banner feed slot never became ready in the WebView"
+  exit 1
+fi
 
-if [[ "$native_loaded" == true ]] && wait_for_log_pattern "$CI_NATIVE_SLOT_MARKER" 15; then
+banner_raw="$screenshots_dir/feed-banner-raw.png"
+native_raw="$screenshots_dir/feed-native-raw.png"
+
+ensure_foreground
+sleep 2
+capture_screenshot "$banner_raw"
+convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+inspect_png_not_launcher "$screenshots_dir/feed-banner-in-feed.png"
+
+if [[ "$native_loaded" == true ]] && wait_for_native_slot_ready 30; then
   ensure_foreground
   sleep 2
   capture_screenshot "$native_raw"
   convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
+  inspect_png_not_launcher "$screenshots_dir/feed-native-in-feed.png"
 else
   echo "Skipping native screenshot (test unit no-fill on this emulator run)"
   rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
 fi
-
-if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 45; then
-  echo "Banner feed slot never scrolled into view in the WebView"
-  exit 1
-fi
-ensure_foreground
-sleep 3
-capture_screenshot "$banner_raw"
-convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
 if [[ ! -f "$screenshots_dir/feed-banner-in-feed.png" ]]; then
   echo "Missing required banner screenshot"
