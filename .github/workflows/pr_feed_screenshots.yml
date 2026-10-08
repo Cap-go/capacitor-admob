@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  capture_feed_screenshots:
+  build_example_apk:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -28,9 +28,6 @@ jobs:
           distribution: zulu
           java-version: 21
 
-      - name: Install ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
-
       - name: Build example APK
         run: |
           set -euo pipefail
@@ -42,15 +39,45 @@ jobs:
           bunx cap sync android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-app-debug-apk
+          path: example-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  capture_feed_screenshots:
+    needs: build_example_apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: example-app-debug-apk
+          path: apk
+
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Capture feed screenshots on emulator
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          FEED_APK_PATH: ${{ github.workspace }}/apk/app-debug.apk
         with:
           api-level: 34
           arch: x86_64
           target: google_apis
-          enable-kvm: true
+          cores: 2
+          ram-size: 2048M
+          emulator-boot-timeout: 300
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: bash .github/scripts/capture-feed-screenshots-emulator.sh
