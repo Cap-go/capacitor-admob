@@ -3,6 +3,8 @@ package admob.plus.capacitor.feed
 import admob.plus.capacitor.AdMobPlusPlugin
 import admob.plus.capacitor.Generated
 import android.content.pm.ApplicationInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.util.Log
 import android.os.Handler
@@ -12,6 +14,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
+import java.io.File
+import java.io.FileOutputStream
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -117,6 +121,7 @@ private class FeedAdEntry(
     private var nativeNoFillRetries = 0
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
+    private var ciBannerSnapshotWritten = false
 
     val isLoaded: Boolean
         get() = loaded
@@ -188,7 +193,40 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
+                    writeCiBannerSnapshotIfNeeded(webView)
                 }
+            }
+        }
+    }
+
+    private fun writeCiBannerSnapshotIfNeeded(webView: WebView) {
+        val isDebuggable =
+            (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!isDebuggable || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+            return
+        }
+        ciBannerSnapshotWritten = true
+        mainHandler.post {
+            var bitmap: Bitmap? = null
+            try {
+                val root = plugin.activity.window.decorView.rootView
+                val width = root.width.coerceAtLeast(1)
+                val height = root.height.coerceAtLeast(1)
+                bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                root.draw(canvas)
+                val file = File(plugin.context.cacheDir, "ci_feed_banner.png")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_written path=${file.absolutePath}")
+            } catch (e: Exception) {
+                Log.i(
+                    FEED_SCREENSHOT_LOG_TAG,
+                    "ci_banner_snapshot_failed message=${e.message}",
+                )
+            } finally {
+                bitmap?.recycle()
             }
         }
     }

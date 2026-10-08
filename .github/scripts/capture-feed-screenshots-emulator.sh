@@ -296,7 +296,13 @@ assert_banner_screenshot_content() {
   return 0
 }
 
-sidecar_script="$repo_root/.github/scripts/banner-capture-sidecar.py"
+pull_ci_banner_snapshot() {
+  adb exec-out run-as "${APP_ID}" cat cache/ci_feed_banner.png > "$banner_raw" 2>/dev/null || true
+  if [[ ! -s "$banner_raw" ]]; then
+    adb shell run-as "${APP_ID}" cat cache/ci_feed_banner.png > "$banner_raw" 2>/dev/null || true
+  fi
+  [[ -s "$banner_raw" ]]
+}
 
 adb install -r "$apk_path"
 keep_screen_on
@@ -307,39 +313,30 @@ native_loaded=false
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
-adb logcat -c >/dev/null 2>&1 || true
-python3 "$sidecar_script" "$banner_raw" &
-CAPTURE_PID=$!
+cold_start_app
 
-SKIP_LOGCAT_CLEAR=1 cold_start_app
-
-capture_deadline=$(( $(date +%s) + 90 ))
-capture_exit=1
-while kill -0 "$CAPTURE_PID" 2>/dev/null; do
-  if (( $(date +%s) >= capture_deadline )); then
-    kill "$CAPTURE_PID" 2>/dev/null || true
-    echo "Timed out waiting for banner capture sidecar"
-    break
-  fi
-  sleep 1
-done
-if wait "$CAPTURE_PID" 2>/dev/null; then
-  capture_exit=0
+if ! wait_for_log_pattern "$CI_FEED_MARKER" 40; then
+  echo "Feed section never became visible in logcat"
+  exit 1
 fi
 
-if [[ "$capture_exit" -ne 0 ]] || [[ ! -s "$banner_raw" ]]; then
+if ! wait_for_log_pattern "ci_banner_snapshot_written" 90; then
+  echo "Native CI banner snapshot was not written"
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   exit 1
 fi
 
-echo "banner_loaded=1" > "$banner_status_file"
-convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
+if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+  echo "banner_loaded=1" > "$banner_status_file"
+fi
+
+if ! pull_ci_banner_snapshot; then
+  echo "Failed to pull ci_feed_banner.png from app cache"
   exit 1
 fi
 
-if ! logcat_snapshot | grep -F "$CI_FEED_MARKER" | grep -q .; then
-  echo "Feed section marker never appeared in logcat"
+convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
   exit 1
 fi
 
