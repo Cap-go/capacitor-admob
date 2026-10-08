@@ -90,6 +90,15 @@
       "enabled": false
     },
     {
+      "matchPackageNames": [
+        "androidx.core:core-ktx"
+      ],
+      "matchManagers": [
+        "gradle"
+      ],
+      "allowedVersions": "<1.19.0"
+    },
+    {
       "matchManagers": [
         "gradle-wrapper"
       ],
