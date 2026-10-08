@@ -171,14 +171,9 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
     console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
     attachFeedAds()
       .then(() => {
-        const nativeSlot = feedList.querySelector('.feed-ad-slot:not(.banner)');
         const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
-        nativeSlot?.scrollIntoView({ block: 'center' });
-        console.info('CAPGO_CI_NATIVE_SLOT_READY');
-        window.setTimeout(() => {
-          bannerSlot?.scrollIntoView({ block: 'center' });
-          console.info('CAPGO_CI_BANNER_SLOT_READY');
-        }, 3000);
+        bannerSlot?.scrollIntoView({ block: 'center' });
+        console.info('CAPGO_CI_BANNER_SLOT_READY');
       })
       .catch((error) => logFeed('CI feed setup failed', error));
   }, 6000);
