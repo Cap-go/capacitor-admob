@@ -2,12 +2,13 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 import { WebPlugin } from '@capacitor/core';
 
-import type { AdMobPlusPlugin } from './definitions';
+import type { AdMobPlusPlugin, AdmobConsentInfo } from './definitions';
+import type { AdMobPlusEventName, AdMobPlusEventPayloadMap } from './events';
 
 export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
-  addListener<EventName extends string>(
-    eventName: EventName,
-    listenerFunc: (...args: any[]) => void,
+  addListener<E extends AdMobPlusEventName>(
+    eventName: E,
+    listenerFunc: (event: AdMobPlusEventPayloadMap[E]) => void,
   ): Promise<PluginListenerHandle> & PluginListenerHandle {
     return super.addListener(eventName, listenerFunc) as Promise<PluginListenerHandle> & PluginListenerHandle;
   }
@@ -24,6 +25,31 @@ export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
     ...opts: Parameters<AdMobPlusPlugin['configRequest']>
   ): ReturnType<AdMobPlusPlugin['configRequest']> {
     console.log('configRequest', opts);
+  }
+
+  async requestConsentInfo(
+    ...opts: Parameters<AdMobPlusPlugin['requestConsentInfo']>
+  ): ReturnType<AdMobPlusPlugin['requestConsentInfo']> {
+    console.log('requestConsentInfo', opts);
+    return {
+      status: 'NOT_REQUIRED' as AdmobConsentInfo['status'],
+      isConsentFormAvailable: false,
+      canRequestAds: true,
+      privacyOptionsRequirementStatus: 'NOT_REQUIRED' as AdmobConsentInfo['privacyOptionsRequirementStatus'],
+    };
+  }
+
+  async showConsentForm(): ReturnType<AdMobPlusPlugin['showConsentForm']> {
+    console.log('showConsentForm');
+    return {
+      status: 'NOT_REQUIRED' as AdmobConsentInfo['status'],
+      canRequestAds: true,
+      privacyOptionsRequirementStatus: 'NOT_REQUIRED' as AdmobConsentInfo['privacyOptionsRequirementStatus'],
+    };
+  }
+
+  async showPrivacyOptionsForm(): ReturnType<AdMobPlusPlugin['showPrivacyOptionsForm']> {
+    console.log('showPrivacyOptionsForm');
   }
 
   async adCreate(...opts: Parameters<AdMobPlusPlugin['adCreate']>): ReturnType<AdMobPlusPlugin['adCreate']> {

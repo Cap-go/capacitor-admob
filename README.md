@@ -64,6 +64,29 @@ npm install @capgo/capacitor-admob
 npx cap sync
 ```
 
+## Consent (UMP)
+
+For apps serving users in the EEA/UK, request consent with Google's User Messaging Platform (UMP) before loading ads. Configure GDPR messages in your AdMob account first.
+
+```typescript
+import { AdMob, AdmobConsentStatus } from '@capgo/capacitor-admob';
+
+await AdMob.start();
+
+let consentInfo = await AdMob.requestConsentInfo();
+if (consentInfo.isConsentFormAvailable && consentInfo.status === AdmobConsentStatus.REQUIRED) {
+  consentInfo = await AdMob.showConsentForm();
+}
+
+if (consentInfo.canRequestAds) {
+  // Load ads only after consent allows ad requests.
+}
+```
+
+To let users manage privacy choices later, call `showPrivacyOptionsForm()` from a settings screen when `privacyOptionsRequirementStatus` is `REQUIRED`.
+
+For local testing on a real device, pass `debugGeography` and `testDeviceIdentifiers` to `requestConsentInfo()`.
+
 ## API
 
 <docgen-index>
@@ -71,6 +94,9 @@ npx cap sync
 * [`start()`](#start)
 * [`configure(...)`](#configure)
 * [`configRequest(...)`](#configrequest)
+* [`requestConsentInfo(...)`](#requestconsentinfo)
+* [`showConsentForm()`](#showconsentform)
+* [`showPrivacyOptionsForm()`](#showprivacyoptionsform)
 * [`adCreate(...)`](#adcreate)
 * [`adIsLoaded(...)`](#adisloaded)
 * [`adLoad(...)`](#adload)
@@ -78,7 +104,7 @@ npx cap sync
 * [`adHide(...)`](#adhide)
 * [`trackingAuthorizationStatus()`](#trackingauthorizationstatus)
 * [`requestTrackingAuthorization()`](#requesttrackingauthorization)
-* [`addListener(string, ...)`](#addlistenerstring-)
+* [`addListener(E, ...)`](#addlistenere-)
 * [`getPluginVersion()`](#getpluginversion)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
@@ -134,6 +160,57 @@ Configure ad request settings.
 | **`requestConfig`** | <code><a href="#requestconfig">RequestConfig</a></code> | - Request configuration options |
 
 **Since:** 1.0.0
+
+--------------------
+
+
+### requestConsentInfo(...)
+
+```typescript
+requestConsentInfo(options?: AdmobConsentRequestOptions | undefined) => Promise<AdmobConsentInfo>
+```
+
+Request user consent information from Google's User Messaging Platform (UMP).
+
+Call this after `start()` and before loading ads for users in the EEA/UK.
+
+| Param         | Type                                                                              | Description                                                  |
+| ------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **`options`** | <code><a href="#admobconsentrequestoptions">AdmobConsentRequestOptions</a></code> | - Optional consent request options for debugging and tagging |
+
+**Returns:** <code>Promise&lt;<a href="#admobconsentinfo">AdmobConsentInfo</a>&gt;</code>
+
+**Since:** 8.2.0
+
+--------------------
+
+
+### showConsentForm()
+
+```typescript
+showConsentForm() => Promise<AdmobConsentInfo>
+```
+
+Shows the Google user consent form rendered from your GDPR message configuration.
+
+**Returns:** <code>Promise&lt;<a href="#admobconsentinfo">AdmobConsentInfo</a>&gt;</code>
+
+**Since:** 8.2.0
+
+--------------------
+
+
+### showPrivacyOptionsForm()
+
+```typescript
+showPrivacyOptionsForm() => Promise<void>
+```
+
+Shows the Google privacy options form rendered from your GDPR message configuration.
+
+Use this when your privacy message requires an in-app entry point for users to manage choices.
+
+**Since:** 8.2.0
 
 --------------------
 
@@ -255,18 +332,18 @@ Request tracking authorization from the user (iOS only).
 --------------------
 
 
-### addListener(string, ...)
+### addListener(E, ...)
 
 ```typescript
-addListener(eventName: string, listenerFunc: (event: any) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
+addListener<E extends AdMobPlusEventName>(eventName: E, listenerFunc: (event: AdMobPlusEventPayloadMap[E]) => void) => Promise<PluginListenerHandle> & PluginListenerHandle
 ```
 
 Add a listener for ad events.
 
-| Param              | Type                                 | Description                                  |
-| ------------------ | ------------------------------------ | -------------------------------------------- |
-| **`eventName`**    | <code>string</code>                  | - The name of the event to listen for        |
-| **`listenerFunc`** | <code>(event: any) =&gt; void</code> | - The function to call when the event occurs |
+| Param              | Type                                                         | Description                                  |
+| ------------------ | ------------------------------------------------------------ | -------------------------------------------- |
+| **`eventName`**    | <code>E</code>                                               | - The name of the event to listen for        |
+| **`listenerFunc`** | <code>(event: AdMobPlusEventPayloadMap[E]) =&gt; void</code> | - The function to call when the event occurs |
 
 **Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt; & <a href="#pluginlistenerhandle">PluginListenerHandle</a></code>
 
@@ -317,11 +394,58 @@ Configuration for ad requests.
 <code>{ /** Maximum ad content rating */ maxAdContentRating?: <a href="#maxadcontentrating">MaxAdContentRating</a>; /** Whether to use the same app key */ sameAppKey?: boolean; /** Tag for child-directed treatment (true, false, or null for unspecified) */ tagForChildDirectedTreatment?: boolean | null; /** Tag for under age of consent (true, false, or null for unspecified) */ tagForUnderAgeOfConsent?: boolean | null; /** Array of test device IDs */ testDeviceIds?: string[]; }</code>
 
 
+#### AdmobConsentInfo
+
+Consent information returned by UMP.
+
+<code>{ /** The consent status of the user. */ status: <a href="#admobconsentstatus">AdmobConsentStatus</a>; /** If true, a consent form is available. */ isConsentFormAvailable?: boolean; /** If true, an ad request can be made. */ canRequestAds: boolean; /** Privacy options requirement status of the user. */ privacyOptionsRequirementStatus: <a href="#privacyoptionsrequirementstatus">PrivacyOptionsRequirementStatus</a>; }</code>
+
+
+#### AdmobConsentRequestOptions
+
+Options for requesting UMP consent information.
+
+<code>{ /** Sets the debug geography to test consent locally. */ debugGeography?: <a href="#admobconsentdebuggeography">AdmobConsentDebugGeography</a>; /** * Test device IDs to allow for consent debugging. * On iOS, the ID may change if you uninstall and reinstall the app. */ testDeviceIdentifiers?: string[]; /** * When true, tags the user as under the age of consent for UMP requests. * * @default false */ tagForUnderAgeOfConsent?: boolean; }</code>
+
+
 #### MobileAdOptions
 
 Base options for mobile ads.
 
 <code>{ /** The ad unit ID from AdMob */ adUnitId: string; }</code>
+
+
+#### AdMobPlusEventName
+
+<code>(typeof AdMobPlusEvents)[keyof typeof AdMobPlusEvents]</code>
+
+
+#### AdMobPlusEventPayloadMap
+
+Maps each {@link <a href="#admobpluseventname">AdMobPlusEventName</a>} to the payload shape emitted from native code.
+
+<code>{ [AdMobPlusEvents.AdClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.AdReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.AdShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.AdShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerClick]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerClose]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.BannerOpen]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.BannerSizeChange]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.InterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.InterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialDismiss]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialImpression]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedInterstitialReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedInterstitialShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedInterstitialShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedLoad]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedLoadFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; [AdMobPlusEvents.RewardedReward]: <a href="#admobplusadrewardpayload">AdMobPlusAdRewardPayload</a>; [AdMobPlusEvents.RewardedShow]: <a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a>; [AdMobPlusEvents.RewardedShowFail]: <a href="#admobplusadfailurepayload">AdMobPlusAdFailurePayload</a>; }</code>
+
+
+#### AdMobPlusAdIdPayload
+
+Event payload always includes the native ad instance id (`adId`). iOS also emits legacy `id`.
+
+<code>{ adId: number; id?: number; }</code>
+
+
+#### AdMobPlusAdFailurePayload
+
+Load and fullscreen show failure payloads from native `LoadAdError` / `FullScreenContentError`.
+
+<code><a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a> & { code: number; message: string; /** Legacy iOS failure field; same string as `message` when present. */ error?: string; }</code>
+
+
+#### AdMobPlusAdRewardPayload
+
+Reward callbacks include the earned reward plus `adId`.
+
+<code><a href="#admobplusadidpayload">AdMobPlusAdIdPayload</a> & { reward: { amount: number; type: string; }; }</code>
 
 
 ### Enums
@@ -336,6 +460,36 @@ Base options for mobile ads.
 | **`PG`**          | <code>'PG'</code> | Parental Guidance  |
 | **`T`**           | <code>'T'</code>  | Teen               |
 | **`UNSPECIFIED`** | <code>''</code>   | Unspecified rating |
+
+
+#### AdmobConsentStatus
+
+| Members            | Value                       | Description                                                     |
+| ------------------ | --------------------------- | --------------------------------------------------------------- |
+| **`NOT_REQUIRED`** | <code>'NOT_REQUIRED'</code> | User consent not required.                                      |
+| **`OBTAINED`**     | <code>'OBTAINED'</code>     | User consent already obtained.                                  |
+| **`REQUIRED`**     | <code>'REQUIRED'</code>     | User consent required but not yet obtained.                     |
+| **`UNKNOWN`**      | <code>'UNKNOWN'</code>      | Unknown consent status. Call requestConsentInfo() to update it. |
+
+
+#### PrivacyOptionsRequirementStatus
+
+| Members            | Value                       | Description                                    |
+| ------------------ | --------------------------- | ---------------------------------------------- |
+| **`NOT_REQUIRED`** | <code>'NOT_REQUIRED'</code> | Privacy options entry point is not required.   |
+| **`REQUIRED`**     | <code>'REQUIRED'</code>     | Privacy options entry point is required.       |
+| **`UNKNOWN`**      | <code>'UNKNOWN'</code>      | Privacy options requirement status is unknown. |
+
+
+#### AdmobConsentDebugGeography
+
+| Members        | Value          | Description                                                     |
+| -------------- | -------------- | --------------------------------------------------------------- |
+| **`DISABLED`** | <code>0</code> | Debug geography disabled.                                       |
+| **`EEA`**      | <code>1</code> | Geography appears as in EEA for debug devices.                  |
+| **`NOT_EEA`**  | <code>2</code> | Geography appears as not in EEA for debug devices.              |
+| **`US`**       | <code>3</code> | Geography appears as in a regulated US state for debug devices. |
+| **`OTHER`**    | <code>4</code> | Geography appears as OTHER for debug devices.                   |
 
 
 #### TrackingAuthorizationStatus

@@ -115,29 +115,26 @@ class BannerAd: NSObject, Ad {
 
 extension BannerAd: BannerViewDelegate {
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
-        plugin?.notifyListeners(Events.bannerLoad, data: ["id": id])
+        plugin?.notifyAdListeners(Events.bannerLoad, adId: id)
     }
 
     func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
-        plugin?.notifyListeners(Events.bannerLoadFail, data: [
-            "id": id,
-            "error": error.localizedDescription
-        ])
+        plugin?.notifyAdFailureListeners(Events.bannerLoadFail, adId: id, error: error)
     }
 
     func bannerViewDidRecordImpression(_ bannerView: BannerView) {
-        plugin?.notifyListeners(Events.bannerImpression, data: ["id": id])
+        plugin?.notifyAdListeners(Events.bannerImpression, adId: id)
     }
 
     func bannerViewWillPresentScreen(_ bannerView: BannerView) {
-        plugin?.notifyListeners(Events.bannerOpen, data: ["id": id])
+        plugin?.notifyAdListeners(Events.bannerOpen, adId: id)
     }
 
     func bannerViewWillDismissScreen(_ bannerView: BannerView) {
-        plugin?.notifyListeners(Events.bannerClose, data: ["id": id])
+        plugin?.notifyAdListeners(Events.bannerClose, adId: id)
     }
 
     func bannerViewDidRecordClick(_ bannerView: BannerView) {
-        plugin?.notifyListeners(Events.bannerClick, data: ["id": id])
+        plugin?.notifyAdListeners(Events.bannerClick, adId: id)
     }
 }
