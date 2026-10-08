@@ -295,32 +295,34 @@ if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=na
   echo "native_status=loaded" > "$status_file"
 fi
 
-if ! wait_for_banner_slot_ready 45; then
-  echo "Banner feed slot never became ready in the WebView"
-  exit 1
-fi
-
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
-capture_banner_with_retries() {
-  local attempt
-  for attempt in $(seq 1 8); do
-    ensure_foreground
-    sleep 1
-    capture_screenshot "$banner_raw"
-    convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-    if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
-      return 0
+capture_banner_when_ready() {
+  local attempts="${1:-120}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    maybe_recover_foreground || true
+    if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
+      if assert_app_in_foreground 2>/dev/null && assert_example_app_on_screen 2>/dev/null; then
+        adb exec-out screencap -p > "$banner_raw"
+        convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+        if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
+          return 0
+        fi
+      fi
     fi
-    echo "Banner capture attempt ${attempt} was invalid; retrying"
-    sleep 2
+    sleep 1
   done
-  echo "Failed to capture a valid in-feed banner screenshot"
+  echo "Failed to capture banner while overlay markers were present"
+  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   return 1
 }
 
-capture_banner_with_retries
+if ! capture_banner_when_ready; then
+  echo "Banner feed slot never became ready or capture failed"
+  exit 1
+fi
 
 if [[ "$native_loaded" == true ]] && wait_for_native_slot_ready 30; then
   ensure_foreground
