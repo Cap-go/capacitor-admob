@@ -25,16 +25,22 @@ until adb shell getprop sys.boot_completed 2>/dev/null | grep -q 1; do
 done
 adb shell input keyevent 82 || true
 
+scroll_feed() {
+  for _ in 1 2 3 4 5 6; do
+    adb shell input swipe 400 1200 400 350 220
+    sleep 0.35
+  done
+}
+
+launch_feed_app() {
+  adb logcat -c
+  adb shell am start -n app.capgo.admob/.MainActivity
+  sleep 16
+  scroll_feed
+}
+
 adb install -r "$apk_path"
-adb logcat -c
-adb shell am start -n app.capgo.admob/.MainActivity
-
-sleep 14
-
-for _ in 1 2 3 4 5 6; do
-  adb shell input swipe 400 1200 400 350 220
-  sleep 0.35
-done
+launch_feed_app
 
 wait_for_feed_load() {
   local format="$1"
@@ -51,7 +57,12 @@ wait_for_feed_load() {
   return 1
 }
 
-wait_for_feed_load native
+if ! wait_for_feed_load native; then
+  echo "Native ad did not load; restarting app once for another fill attempt"
+  adb shell am force-stop app.capgo.admob
+  launch_feed_app
+  wait_for_feed_load native
+fi
 sleep 1
 adb exec-out screencap -p > "$screenshots_dir/feed-native-raw.png"
 

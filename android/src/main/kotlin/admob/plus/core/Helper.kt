@@ -2,6 +2,7 @@ package admob.plus.core
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.os.Build
 import android.content.res.Resources
 import android.provider.Settings
 import android.util.DisplayMetrics
@@ -27,7 +28,11 @@ class Helper(private val adapter: Adapter) {
         }
 
     fun configForTestLab() {
-        if (!isRunningInTestLab) {
+        configureTestAdsIfNeeded()
+    }
+
+    fun configureTestAdsIfNeeded() {
+        if (!isRunningInTestLab && !isEmulator()) {
             return
         }
         val config = MobileAds.getRequestConfiguration()
@@ -44,6 +49,18 @@ class Helper(private val adapter: Adapter) {
             .setTestDeviceIds(testDeviceIds)
         builder.setPublisherPrivacyPersonalizationState(config.publisherPrivacyPersonalizationState)
         MobileAds.setRequestConfiguration(builder.build())
+    }
+
+    private fun isEmulator(): Boolean {
+        return Build.FINGERPRINT.startsWith("generic")
+            || Build.FINGERPRINT.startsWith("unknown")
+            || Build.MODEL.contains("google_sdk")
+            || Build.MODEL.contains("Emulator")
+            || Build.MODEL.contains("Android SDK built for x86")
+            || Build.MANUFACTURER.contains("Genymotion")
+            || Build.HARDWARE.contains("goldfish")
+            || Build.HARDWARE.contains("ranchu")
+            || Build.PRODUCT.contains("sdk")
     }
 
     private val deviceId: String
