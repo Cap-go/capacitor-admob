@@ -107,6 +107,23 @@ scroll_feed_list_down() {
   done
 }
 
+scroll_until_ad_in_hierarchy() {
+  local attempts="${1:-18}"
+  local i dump
+  for (( i = 1; i <= attempts; i++ )); do
+    adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 || true
+    dump=$(adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true)
+    if echo "$dump" | grep -qiE 'GmsAd|AdView|text="Test Ad"|text="Install"|text="Open"'; then
+      return 0
+    fi
+    scroll_feed_list_down 1
+    sleep 0.6
+  done
+  echo "Ad view not found in UI hierarchy before screenshot"
+  echo "$dump" | head -c 2000 || true
+  return 1
+}
+
 capture_screenshot() {
   local outfile="$1"
   wake_device
@@ -164,7 +181,7 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 
 if [[ "$native_loaded" == true ]]; then
   launch_main_activity
-  scroll_feed_list_down 2
+  scroll_until_ad_in_hierarchy 14
   capture_screenshot "$native_raw"
   convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
 else
@@ -173,7 +190,9 @@ else
 fi
 
 launch_main_activity
-scroll_feed_list_down 6
+scroll_feed_list_down 4
+scroll_until_ad_in_hierarchy 20
+sleep 2
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
