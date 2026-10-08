@@ -216,11 +216,14 @@ private class FeedAdEntry(
             return
         }
         ciBannerSnapshotScheduled = true
-        mainHandler.post {
-            if (!ciBannerSnapshotWritten) {
-                writeCiBannerOverlaySnapshotNow(host)
-            }
-        }
+        mainHandler.postDelayed(
+            {
+                if (!ciBannerSnapshotWritten) {
+                    adHost?.let { writeCiBannerOverlaySnapshotNow(it) }
+                }
+            },
+            1_500L,
+        )
     }
 
     private fun writeCiBannerOverlaySnapshotNow(host: View) {

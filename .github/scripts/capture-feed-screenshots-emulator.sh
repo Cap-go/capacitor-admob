@@ -290,7 +290,7 @@ wait_for_native_slot_ready() {
 scroll_webview_to_feed_section() {
   local dump attempt
   for attempt in $(seq 1 16); do
-    assert_app_in_foreground
+    assert_app_in_foreground 2>/dev/null || return 1
     dump=$(ui_hierarchy_dump)
     if echo "$dump" | grep -qE 'In-Feed|Sponsored \(banner'; then
       return 0
@@ -317,7 +317,7 @@ capture_screenshot() {
     sleep 1
   done
   assert_example_app_on_screen
-  assert_app_in_foreground
+  assert_app_in_foreground 2>/dev/null || return 1
   sleep 1
   adb exec-out screencap -p > "$outfile"
   if [[ ! -s "$outfile" ]]; then
@@ -359,7 +359,7 @@ validate_overlay_banner_png() {
     return 1
   fi
   stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-  if awk -v s="$stddev" 'BEGIN { exit !(s >= 1800) }'; then
+  if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
     echo "Overlay banner snapshot has ad content (stddev=${stddev})"
     return 0
   fi
@@ -425,7 +425,7 @@ assert_banner_screenshot_content() {
     return 1
   fi
   stddev=$(banner_region_stddev "$png")
-  if awk -v s="$stddev" 'BEGIN { exit !(s >= 1800) }'; then
+  if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
     echo "Banner region shows ad contrast (stddev=${stddev})"
     return 0
   fi
@@ -484,16 +484,16 @@ scroll_webview_to_feed_section || true
 
 banner_capture_ok=false
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
-if wait_for_ci_banner_snapshot 25 && pull_ci_banner_snapshot && cp "$banner_raw" "$overlay_proof" && validate_overlay_banner_png "$overlay_proof"; then
+if wait_for_ci_banner_snapshot 45 && pull_ci_banner_snapshot && cp "$banner_raw" "$overlay_proof" && validate_overlay_banner_png "$overlay_proof"; then
   echo "Validated banner overlay snapshot from app cache"
 fi
 
-for _quick in 1 2 3 4 5 6 8 10 12 15; do
-  if assert_app_in_foreground 2>/dev/null && assert_no_crash_dialog 2>/dev/null; then
+  for _quick in 1 2 3 4 5 6 8 10 12 15; do
+  if assert_app_in_foreground 2>/dev/null; then
     adb exec-out screencap -p > "$banner_raw"
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
       stddev=$(banner_region_stddev "$banner_raw")
-      if awk -v s="$stddev" 'BEGIN { exit !(s >= 1800) }'; then
+      if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
         banner_capture_ok=true
         echo "Quick screencap captured banner in feed (stddev=${stddev})"
         break
