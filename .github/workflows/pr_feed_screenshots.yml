@@ -65,7 +65,12 @@ jobs:
           path: apk
 
       - name: Install ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
+        run: |
+          if command -v convert >/dev/null 2>&1; then
+            convert -version | head -1
+            exit 0
+          fi
+          sudo apt-get install -y --no-install-recommends imagemagick
 
       - name: Enable KVM
         run: |
@@ -91,7 +96,7 @@ jobs:
           target: google_apis
           cores: 2
           ram-size: 2048M
-          emulator-boot-timeout: 480
+          emulator-boot-timeout: 300
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x1920
           disable-animations: true
           script: bash .github/scripts/capture-feed-screenshots-emulator.sh
