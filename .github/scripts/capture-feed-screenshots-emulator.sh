@@ -258,7 +258,12 @@ validate_png_pair() {
 
 inspect_png_not_launcher() {
   local png="$1"
-  local stats
+  local stats mean_all
+  mean_all=$(convert "$png" -colorspace Gray -format "%[mean]" info: 2>/dev/null || echo "0")
+  if awk -v m="$mean_all" 'BEGIN { exit !(m < 12000) }'; then
+    echo "Screenshot ${png} is blank or not rendering (mean=${mean_all})"
+    return 1
+  fi
   stats=$(convert "$png" -crop 90%x12%+5%+8% -format "%[mean]" info: 2>/dev/null || echo "")
   if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit !(m > 45000) }'; then
     echo "Screenshot ${png} looks like the Android launcher (bright status/search band)"
@@ -319,6 +324,8 @@ capture_banner_when_ready() {
       continue
     fi
     for shot_try in 1 2 3 4; do
+      wake_device
+      sleep 1
       adb exec-out screencap -p > "$banner_raw"
       convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
       if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
