@@ -92,7 +92,7 @@ jobs:
           cores: 2
           ram-size: 2048M
           emulator-boot-timeout: 480
-          emulator-options: -no-window -gpu host -noaudio -no-boot-anim -skin 1080x1920
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x1920
           disable-animations: true
           script: bash .github/scripts/capture-feed-screenshots-emulator.sh
 

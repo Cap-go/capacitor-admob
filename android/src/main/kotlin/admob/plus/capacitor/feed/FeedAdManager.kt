@@ -4,12 +4,11 @@ import admob.plus.capacitor.AdMobPlusPlugin
 import admob.plus.capacitor.Generated
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
-import android.os.Build
 import android.util.Log
 import android.os.Handler
 import android.os.Looper
-import android.view.PixelCopy
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -123,14 +122,6 @@ private class FeedAdEntry(
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
-    private var ciBannerSnapshotAttempts = 0
-    private var ciBannerSnapshotRunnable: Runnable? = null
-
-    private companion object {
-        const val MAX_CI_BANNER_SNAPSHOT_ATTEMPTS = 10
-        const val CI_BANNER_SNAPSHOT_RETRY_MS = 1_000L
-        const val CI_BANNER_SNAPSHOT_INITIAL_DELAY_MS = 600L
-    }
 
     val isLoaded: Boolean
         get() = loaded
@@ -140,8 +131,6 @@ private class FeedAdEntry(
         refreshRunnable = null
         nativeNoFillRetryRunnable?.let { mainHandler.removeCallbacks(it) }
         nativeNoFillRetryRunnable = null
-        ciBannerSnapshotRunnable?.let { mainHandler.removeCallbacks(it) }
-        ciBannerSnapshotRunnable = null
         nativeAd?.destroy()
         nativeAd = null
         adHost?.let { (it.parent as? ViewGroup)?.removeView(it) }
@@ -204,13 +193,13 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
+                    writeCiBannerOverlaySnapshotIfNeeded()
                 }
             }
         }
     }
 
-    private fun scheduleCiBannerSnapshotIfNeeded() {
-        Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
+    private fun writeCiBannerOverlaySnapshotIfNeeded() {
         val isDebuggable =
             (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (!isDebuggable) {
@@ -220,90 +209,33 @@ private class FeedAdEntry(
         if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
-        if (ciBannerSnapshotRunnable != null) {
+        val host = adHost
+        if (host == null || !loaded) {
             return
         }
-        val retry = object : Runnable {
-            override fun run() {
-                if (ciBannerSnapshotWritten) {
-                    ciBannerSnapshotRunnable = null
-                    return
-                }
-                if (ciBannerSnapshotAttempts >= MAX_CI_BANNER_SNAPSHOT_ATTEMPTS) {
-                    Log.i(
-                        FEED_SCREENSHOT_LOG_TAG,
-                        "ci_banner_snapshot_failed message=max_attempts",
-                    )
-                    ciBannerSnapshotRunnable = null
-                    return
-                }
-                ciBannerSnapshotAttempts += 1
-                attemptCiBannerSnapshotPixelCopy(this)
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
+        var bitmap: Bitmap? = null
+        try {
+            val width = host.width.coerceAtLeast(1)
+            val height = host.height.coerceAtLeast(1)
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(Color.WHITE)
+            host.draw(canvas)
+            val file = File(plugin.context.cacheDir, "ci_feed_banner.png")
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
+            ciBannerSnapshotWritten = true
+            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_written path=${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.i(
+                FEED_SCREENSHOT_LOG_TAG,
+                "ci_banner_snapshot_failed message=${e.message}",
+            )
+        } finally {
+            bitmap?.recycle()
         }
-        ciBannerSnapshotRunnable = retry
-        mainHandler.postDelayed(retry, CI_BANNER_SNAPSHOT_INITIAL_DELAY_MS)
-    }
-
-    private fun attemptCiBannerSnapshotPixelCopy(retry: Runnable) {
-        if (ciBannerSnapshotWritten) {
-            return
-        }
-        Log.i(
-            FEED_SCREENSHOT_LOG_TAG,
-            "ci_banner_snapshot_attempt id=$id try=$ciBannerSnapshotAttempts loaded=$loaded activity=${plugin.activity != null}",
-        )
-        val activity = plugin.activity
-        if (activity == null || !loaded) {
-            mainHandler.postDelayed(retry, CI_BANNER_SNAPSHOT_RETRY_MS)
-            return
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_failed message=api_too_low")
-            ciBannerSnapshotRunnable = null
-            return
-        }
-        val window = activity.window
-        val decor = window.decorView
-        val width = decor.width.coerceAtLeast(1)
-        val height = decor.height.coerceAtLeast(1)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        PixelCopy.request(
-            window,
-            bitmap,
-            { copyResult ->
-                if (copyResult != PixelCopy.SUCCESS) {
-                    bitmap.recycle()
-                    Log.i(
-                        FEED_SCREENSHOT_LOG_TAG,
-                        "ci_banner_snapshot_failed message=pixelcopy_${copyResult}",
-                    )
-                    mainHandler.postDelayed(retry, CI_BANNER_SNAPSHOT_RETRY_MS)
-                    return@request
-                }
-                try {
-                    val file = File(plugin.context.cacheDir, "ci_feed_banner.png")
-                    FileOutputStream(file).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                    }
-                    ciBannerSnapshotWritten = true
-                    ciBannerSnapshotRunnable = null
-                    Log.i(
-                        FEED_SCREENSHOT_LOG_TAG,
-                        "ci_banner_snapshot_written path=${file.absolutePath}",
-                    )
-                } catch (e: Exception) {
-                    Log.i(
-                        FEED_SCREENSHOT_LOG_TAG,
-                        "ci_banner_snapshot_failed message=${e.message}",
-                    )
-                    mainHandler.postDelayed(retry, CI_BANNER_SNAPSHOT_RETRY_MS)
-                } finally {
-                    bitmap.recycle()
-                }
-            },
-            mainHandler,
-        )
     }
 
     private fun finishLoad(errorMessage: String?) {

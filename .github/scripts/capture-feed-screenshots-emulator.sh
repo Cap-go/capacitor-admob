@@ -358,9 +358,9 @@ assert_banner_screenshot_content() {
   if ! inspect_png_not_launcher "$png"; then
     return 1
   fi
-  stddev=$(convert "$png" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+  stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
   if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
-    echo "Screenshot feed region looks flat (stddev=${stddev}); banner likely not visible"
+    echo "Screenshot looks flat (stddev=${stddev}); banner likely not visible"
     return 1
   fi
   dump=$(ui_hierarchy_dump)
@@ -417,10 +417,10 @@ if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 90 0; then
 fi
 
 banner_capture_ok=false
-if capture_banner_in_foreground 40; then
+if wait_for_ci_banner_snapshot 50 && pull_ci_banner_snapshot; then
+  echo "Using native CI banner overlay snapshot from app cache"
   banner_capture_ok=true
-elif wait_for_ci_banner_snapshot 45 && pull_ci_banner_snapshot; then
-  echo "Using native CI banner snapshot from app cache"
+elif capture_banner_in_foreground 15; then
   banner_capture_ok=true
 elif capture_banner_screencap_fallback && inspect_png_not_launcher "$banner_raw"; then
   banner_capture_ok=true
