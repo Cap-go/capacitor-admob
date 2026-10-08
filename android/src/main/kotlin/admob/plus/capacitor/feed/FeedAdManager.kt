@@ -182,7 +182,7 @@ private class FeedAdEntry(
             val top = (y * density).toInt() + webView.top
             val w = max(1, (width * density).toInt())
             val h = max(1, (height * density).toInt())
-            val params = FrameLayout.LayoutParams(w, h).apply {
+            val params = ViewGroup.MarginLayoutParams(w, h).apply {
                 leftMargin = left
                 topMargin = top
             }
