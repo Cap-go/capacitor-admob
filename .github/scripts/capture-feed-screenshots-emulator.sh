@@ -29,9 +29,9 @@ adb install -r "$apk_path"
 adb logcat -c
 adb shell am start -n app.capgo.admob/.MainActivity
 
-sleep 8
+sleep 14
 
-for _ in 1 2 3 4 5; do
+for _ in 1 2 3 4 5 6; do
   adb shell input swipe 400 1200 400 350 220
   sleep 0.35
 done
@@ -41,12 +41,13 @@ wait_for_feed_load() {
   local attempts=45
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    if adb logcat -d -s "${feed_log_tag}:I" 2>/dev/null | grep -q "feed_load id=.* format=${format}"; then
+    if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
       return 0
     fi
     sleep 2
   done
-  echo "Timed out waiting for native feed_load (format=${format}) in logcat"
+  echo "Timed out waiting for feed_load (format=${format}) in logcat"
+  adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | tail -30 || true
   return 1
 }
 

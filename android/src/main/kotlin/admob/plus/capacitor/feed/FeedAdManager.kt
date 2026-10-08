@@ -184,6 +184,7 @@ private class FeedAdEntry(
     }
 
     private fun loadNative() {
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load_start id=$id format=native")
         val request = NativeAdRequest.Builder(adUnitId, listOf(NativeAd.NativeAdType.NATIVE)).build()
         NativeAdLoader.load(
             request,
@@ -195,6 +196,10 @@ private class FeedAdEntry(
                 }
 
                 override fun onAdFailedToLoad(adError: LoadAdError) {
+                    Log.i(
+                        FEED_SCREENSHOT_LOG_TAG,
+                        "feed_load_fail id=$id format=native code=${adError.code.value} message=${adError.message}",
+                    )
                     emitFeedFail(adError)
                     loaded = false
                     finishLoad(adError.message)
@@ -289,6 +294,7 @@ private class FeedAdEntry(
     }
 
     private fun loadBanner() {
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load_start id=$id format=banner")
         val activity = plugin.activity
         val webView = plugin.bridge.webView
         if (bannerAdView == null) {
@@ -329,6 +335,10 @@ private class FeedAdEntry(
                 }
 
                 override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    Log.i(
+                        FEED_SCREENSHOT_LOG_TAG,
+                        "feed_load_fail id=$id format=banner code=${loadAdError.code.value} message=${loadAdError.message}",
+                    )
                     emitFeedFail(loadAdError)
                     loaded = false
                     finishLoad(loadAdError.message)

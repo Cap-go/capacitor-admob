@@ -168,5 +168,5 @@ if (ciFeedDemo && Capacitor.isNativePlatform()) {
   window.setTimeout(() => {
     document.getElementById('feedSection')?.scrollIntoView({ block: 'start' });
     attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
-  }, 2500);
+  }, 6000);
 }
