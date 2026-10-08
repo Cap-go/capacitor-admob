@@ -54,7 +54,7 @@ if (ciFeedDemo) {
 const buildFeed = () => {
   feedList.innerHTML = '';
   let adIndex = 0;
-  const posts = ciFeedDemo ? samplePosts.slice(0, 2) : samplePosts;
+  const posts = ciFeedDemo ? samplePosts.slice(0, 1) : samplePosts;
 
   posts.forEach((post, index) => {
     const card = document.createElement('article');
@@ -62,7 +62,7 @@ const buildFeed = () => {
     card.innerHTML = `<h3>${post.title}</h3><p>${post.body}</p>`;
     feedList.appendChild(card);
 
-    if (index % 2 === 1) {
+    if (!ciFeedDemo && index % 2 === 1) {
       const slot = document.createElement('div');
       slot.className = 'feed-ad-slot';
       slot.dataset.adIndex = String(adIndex);

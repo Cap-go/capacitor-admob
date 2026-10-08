@@ -195,6 +195,7 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
+                    writeCiBannerOverlaySnapshotIfNeeded()
                 }
             }
         }
@@ -226,7 +227,6 @@ private class FeedAdEntry(
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_attempt id=$id")
         var bitmap: Bitmap? = null
         try {
-            host.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
             val width = host.width.coerceAtLeast(1)
             val height = host.height.coerceAtLeast(1)
             bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
