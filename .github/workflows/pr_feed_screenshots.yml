@@ -28,8 +28,24 @@ jobs:
           distribution: zulu
           java-version: 21
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Build example APK
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run build
+          cd example-app
+          bun install --frozen-lockfile
+          VITE_CI_FEED=1 bun run build
+          bunx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Capture feed screenshots on emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -40,7 +56,7 @@ jobs:
           enable-kvm: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
-          script: bash .github/scripts/capture-feed-screenshots.sh
+          script: bash .github/scripts/capture-feed-screenshots-emulator.sh
 
       - name: Upload feed screenshot artifacts
         uses: actions/upload-artifact@v4
