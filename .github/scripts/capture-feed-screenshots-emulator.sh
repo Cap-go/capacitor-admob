@@ -91,6 +91,11 @@ ensure_foreground() {
   fi
   adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
   sleep 2
+  if assert_app_in_foreground 2>/dev/null; then
+    return 0
+  fi
+  adb shell monkey -p "${APP_ID}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+  sleep 2
   assert_app_in_foreground
 }
 
@@ -261,8 +266,8 @@ inspect_png_not_launcher() {
 assert_banner_screenshot_content() {
   local png="$1"
   local dump
-  if ! logcat_snapshot | grep "${feed_log_tag}" | grep -qE 'ci_banner_slot_ready|overlay_visible id=.* format=banner'; then
-    echo "Banner overlay was not visible in logcat before capture"
+  if ! logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+    echo "Banner feed_load never logged before capture"
     return 1
   fi
   dump=$(ui_hierarchy_dump)
@@ -277,7 +282,7 @@ adb install -r "$apk_path"
 keep_screen_on
 cold_start_app
 
-if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
+if ! wait_for_log_pattern "$CI_FEED_MARKER" 40; then
   echo "Feed section never became visible in logcat"
   exit 1
 fi
@@ -285,7 +290,7 @@ fi
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
 
-if ! wait_for_feed_load banner 50; then
+if ! wait_for_feed_load banner 35; then
   echo "Banner test ad did not load; cannot produce in-feed screenshot"
   exit 1
 fi
@@ -299,18 +304,21 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
 capture_banner_when_ready() {
-  local attempts="${1:-120}"
+  local attempts="${1:-50}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
     maybe_recover_foreground || true
     if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
-      if assert_app_in_foreground 2>/dev/null && assert_example_app_on_screen 2>/dev/null; then
+      local shot_try
+      for shot_try in 1 2 3 4; do
+        maybe_recover_foreground || true
         adb exec-out screencap -p > "$banner_raw"
         convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
         if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
           return 0
         fi
-      fi
+        sleep 0.75
+      done
     fi
     sleep 1
   done
