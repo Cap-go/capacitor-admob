@@ -86,9 +86,18 @@ cold_start_app() {
 ensure_foreground() {
   wake_device
   dismiss_blocking_dialogs
+  if assert_app_in_foreground 2>/dev/null; then
+    return 0
+  fi
   adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
   sleep 2
   assert_app_in_foreground
+}
+
+maybe_recover_foreground() {
+  if ! assert_app_in_foreground 2>/dev/null; then
+    ensure_foreground
+  fi
 }
 
 ui_hierarchy_dump() {
@@ -124,7 +133,7 @@ wait_for_log_pattern() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if (( i % 12 == 0 )); then
-      ensure_foreground || true
+      maybe_recover_foreground || true
     fi
     if logcat_snapshot | grep -F "$pattern" | grep -q .; then
       return 0
@@ -141,7 +150,7 @@ wait_for_feed_load() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if (( i % 12 == 0 )); then
-      ensure_foreground || true
+      maybe_recover_foreground || true
     fi
     if logcat_snapshot | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
       return 0
@@ -158,7 +167,7 @@ wait_for_banner_slot_ready() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if (( i % 10 == 0 )); then
-      ensure_foreground || true
+      maybe_recover_foreground || true
     fi
     if logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|overlay_visible id=.* format=banner" | grep -q .; then
       return 0
@@ -174,7 +183,7 @@ wait_for_native_slot_ready() {
   local attempts="${1:-25}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    ensure_foreground || true
+    maybe_recover_foreground || true
     if logcat_snapshot | grep -E "${CI_NATIVE_SLOT_MARKER}|overlay_visible id=.* format=native" | grep -q .; then
       return 0
     fi
@@ -197,7 +206,7 @@ scroll_webview_to_feed_section() {
     if echo "$dump" | grep -q 'SDK Setup'; then
       adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 320
       sleep 0.45
-      ensure_foreground || true
+      maybe_recover_foreground || true
       continue
     fi
     return 0
