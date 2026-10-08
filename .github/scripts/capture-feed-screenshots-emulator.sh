@@ -294,11 +294,6 @@ fi
 echo "native_status=no_fill" > "$status_file"
 native_loaded=false
 
-if ! wait_for_feed_load banner 35; then
-  echo "Banner test ad did not load; cannot produce in-feed screenshot"
-  exit 1
-fi
-
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
   native_loaded=true
   echo "native_status=loaded" > "$status_file"
@@ -308,11 +303,14 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
 capture_banner_when_ready() {
-  local wait_attempts="${1:-40}"
-  local i shot_try
+  local wait_attempts="${1:-90}"
+  local i shot_try banner_seen=false
   for (( i = 1; i <= wait_attempts; i++ )); do
     maybe_recover_foreground || true
-    if ! recent_logcat | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
+    if recent_logcat | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+      banner_seen=true
+    fi
+    if [[ "$banner_seen" != true ]]; then
       sleep 0.5
       continue
     fi
@@ -320,20 +318,18 @@ capture_banner_when_ready() {
       sleep 0.5
       continue
     fi
-    for shot_try in 1 2 3 4 5 6 7 8; do
-      maybe_recover_foreground || true
+    for shot_try in 1 2 3 4; do
       adb exec-out screencap -p > "$banner_raw"
       convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
       if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
         return 0
       fi
-      sleep 0.5
+      sleep 0.25
     done
-    echo "Failed to capture banner after readiness markers appeared"
-    logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
-    return 1
+    sleep 0.5
   done
-  echo "Timed out waiting for banner readiness markers"
+  echo "Timed out capturing banner while feed_load was present"
+  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   return 1
 }
 
