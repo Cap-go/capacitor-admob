@@ -14,8 +14,8 @@ abstract class Ad(val id: Int, val adUnitId: String) {
     }
 
     constructor(ctx: Context) : this(
-        Objects.requireNonNull<Int?>(ctx.optId()),
-        Objects.requireNonNull<String?>(ctx.optAdUnitID())
+        requireNotNull(ctx.optId()),
+        requireNotNull(ctx.optAdUnitID()),
     )
 
     open fun destroy() {

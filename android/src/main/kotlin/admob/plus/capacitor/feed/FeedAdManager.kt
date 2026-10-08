@@ -240,7 +240,6 @@ private class FeedAdEntry(
             ViewGroup.LayoutParams.MATCH_PARENT,
             (180 * context.resources.displayMetrics.density).toInt(),
         )
-        nativeAdView.mediaView = mediaView
         column.addView(mediaView)
 
         val headline = TextView(context)
