@@ -213,7 +213,14 @@ scroll_webview_to_feed_section() {
 
 capture_screenshot() {
   local outfile="$1"
-  ensure_foreground
+  local attempt
+  for attempt in $(seq 1 6); do
+    ensure_foreground
+    if assert_example_app_on_screen 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
   assert_example_app_on_screen
   sleep 1
   adb exec-out screencap -p > "$outfile"
@@ -253,18 +260,18 @@ inspect_png_not_launcher() {
 
 assert_banner_screenshot_content() {
   local png="$1"
-  local dump mean_top
+  local dump
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
     echo "Banner screenshot shows the SDK setup screen, not section 5"
     return 1
   fi
-  mean_top=$(convert "$png" -crop 95%x35%+2%+12% -colorspace Gray -format "%[mean]" info: 2>/dev/null || echo "0")
-  if awk -v m="$mean_top" 'BEGIN { exit (m < 18000) }'; then
-    echo "Banner screenshot is too dark to be the in-feed section (mean=${mean_top})"
-    return 1
+  if echo "$dump" | grep -qE 'In-Feed Native|Sponsored \(banner'; then
+    inspect_png_not_launcher "$png"
+    return 0
   fi
-  inspect_png_not_launcher "$png"
+  echo "Banner screenshot UI hierarchy does not include the feed section labels"
+  return 1
 }
 
 adb install -r "$apk_path"
