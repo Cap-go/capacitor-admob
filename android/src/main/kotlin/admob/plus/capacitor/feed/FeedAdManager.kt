@@ -139,6 +139,7 @@ private class FeedAdEntry(
         bannerAdView?.destroy()
         bannerAdView = null
         loaded = false
+        ciBannerSnapshotScheduled = false
     }
 
     fun setAutoRefresh(autoRefreshMs: Int?) {
@@ -194,7 +195,6 @@ private class FeedAdEntry(
                 Log.i(FEED_SCREENSHOT_LOG_TAG, "overlay_visible id=$id format=$formatLabel")
                 if (format == FeedAdFormat.BANNER) {
                     Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_slot_ready id=$id")
-                    writeCiBannerOverlaySnapshotIfNeeded()
                 }
             }
         }

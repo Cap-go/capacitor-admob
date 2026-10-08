@@ -126,6 +126,17 @@ recent_logcat() {
   adb logcat -d -t 80 2>/dev/null || true
 }
 
+assert_no_crash_dialog() {
+  local dump
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -qi 'keeps stopping'; then
+    echo "App crash dialog is blocking the UI"
+    dismiss_blocking_dialogs
+    return 1
+  fi
+  return 0
+}
+
 assert_example_app_on_screen() {
   local dump
   dump=$(ui_hierarchy_dump)
@@ -199,6 +210,8 @@ capture_banner_in_foreground() {
       sleep 2
       continue
     fi
+    dismiss_blocking_dialogs
+    assert_no_crash_dialog || { sleep 1; continue; }
     sleep 1
     adb exec-out screencap -p > "$banner_raw"
     if is_valid_png_file "$banner_raw" && inspect_png_not_launcher "$banner_raw"; then
@@ -206,10 +219,6 @@ capture_banner_in_foreground() {
       stddev=$(convert "$banner_raw" -crop 75%x30%+12%+28% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
       if awk -v s="$stddev" 'BEGIN { exit !(s >= 800) }'; then
         echo "Captured banner-in-feed via screencap (attempt ${i}, stddev=${stddev})"
-        return 0
-      fi
-      if logcat_snapshot | grep -F "$CI_BANNER_SLOT_MARKER" | grep -q .; then
-        echo "Captured banner-in-feed via screencap with CI banner marker (attempt ${i}, stddev=${stddev})"
         return 0
       fi
       echo "Screencap attempt ${i} feed region flat (stddev=${stddev}); retrying"
@@ -354,6 +363,11 @@ assert_banner_screenshot_content() {
     echo "Banner load status file missing before capture"
     return 1
   fi
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -qi 'keeps stopping'; then
+    echo "Screenshot capture hit the app crash dialog"
+    return 1
+  fi
   if grep -q 'banner_overlay_snapshot=1' "$banner_status_file" 2>/dev/null; then
     stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
     if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
@@ -436,24 +450,10 @@ fi
 sleep 3
 
 banner_capture_ok=false
-if wait_for_ci_banner_snapshot 30 && pull_ci_banner_snapshot; then
-  echo "Using native CI banner overlay snapshot from app cache"
-  echo "banner_loaded=1" > "$banner_status_file"
-  echo "banner_overlay_snapshot=1" >> "$banner_status_file"
-  banner_capture_ok=true
-elif capture_banner_in_foreground 15; then
+if capture_banner_in_foreground 25; then
   banner_capture_ok=true
 elif capture_banner_screencap_fallback && inspect_png_not_launcher "$banner_raw"; then
   banner_capture_ok=true
-fi
-
-if [[ "$banner_capture_ok" != true ]]; then
-  if pull_ci_banner_snapshot &&
-    logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-    echo "banner_loaded=1" > "$banner_status_file"
-    echo "banner_overlay_snapshot=1" >> "$banner_status_file"
-    banner_capture_ok=true
-  fi
 fi
 
 if [[ "$banner_capture_ok" != true ]]; then
