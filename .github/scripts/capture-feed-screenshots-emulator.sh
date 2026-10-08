@@ -114,6 +114,10 @@ logcat_snapshot() {
   adb logcat -d 2>/dev/null || true
 }
 
+recent_logcat() {
+  adb logcat -d -t 80 2>/dev/null || true
+}
+
 assert_example_app_on_screen() {
   local dump
   dump=$(ui_hierarchy_dump)
@@ -308,8 +312,12 @@ capture_banner_when_ready() {
   local i shot_try
   for (( i = 1; i <= wait_attempts; i++ )); do
     maybe_recover_foreground || true
-    if ! logcat_snapshot | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
-      sleep 1
+    if ! recent_logcat | grep -E "${CI_BANNER_SLOT_MARKER}|ci_banner_slot_ready|overlay_visible id=.* format=banner" | grep -q .; then
+      sleep 0.5
+      continue
+    fi
+    if ! assert_app_in_foreground 2>/dev/null; then
+      sleep 0.5
       continue
     fi
     for shot_try in 1 2 3 4 5 6 7 8; do
