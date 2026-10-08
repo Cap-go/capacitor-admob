@@ -140,9 +140,10 @@ assert_example_app_on_screen() {
 wait_for_log_pattern() {
   local pattern="$1"
   local attempts="${2:-45}"
+  local recover="${3:-1}"
   local i
   for (( i = 1; i <= attempts; i++ )); do
-    if (( i % 12 == 0 )); then
+    if [[ "$recover" == "1" ]] && (( i % 12 == 0 )); then
       maybe_recover_foreground || true
     fi
     if logcat_snapshot | grep -F "$pattern" | grep -q .; then
@@ -152,6 +153,34 @@ wait_for_log_pattern() {
   done
   echo "Timed out waiting for log pattern: ${pattern}"
   return 1
+}
+
+wait_for_ci_banner_snapshot() {
+  local attempts="${1:-75}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if logcat_snapshot | grep -F "ci_banner_snapshot_written" | grep -q .; then
+      return 0
+    fi
+    if pull_ci_banner_snapshot 2>/dev/null && [[ -s "${banner_raw:-}" ]]; then
+      return 0
+    fi
+    if (( i % 25 == 0 )); then
+      if ! assert_app_in_foreground 2>/dev/null; then
+        ensure_foreground || true
+      fi
+    fi
+    sleep 1
+  done
+  echo "Timed out waiting for CI banner snapshot file or log marker"
+  return 1
+}
+
+capture_banner_screencap_fallback() {
+  ensure_foreground
+  sleep 1
+  adb exec-out screencap -p > "$banner_raw"
+  [[ -s "$banner_raw" ]]
 }
 
 wait_for_feed_load() {
@@ -320,19 +349,27 @@ if ! wait_for_log_pattern "$CI_FEED_MARKER" 40; then
   exit 1
 fi
 
-if ! wait_for_log_pattern "ci_banner_snapshot_written" 90; then
-  echo "Native CI banner snapshot was not written"
+if ! wait_for_log_pattern "$CI_BANNER_SLOT_MARKER" 60 0; then
+  echo "Banner slot never became ready"
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   exit 1
 fi
 
-if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-  echo "banner_loaded=1" > "$banner_status_file"
+if ! wait_for_ci_banner_snapshot 90; then
+  echo "Native CI banner snapshot was not written; trying foreground screencap fallback"
+  logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
+  if ! capture_banner_screencap_fallback; then
+    exit 1
+  fi
+elif ! pull_ci_banner_snapshot; then
+  echo "Failed to pull ci_feed_banner.png from app cache; trying screencap fallback"
+  if ! capture_banner_screencap_fallback; then
+    exit 1
+  fi
 fi
 
-if ! pull_ci_banner_snapshot; then
-  echo "Failed to pull ci_feed_banner.png from app cache"
-  exit 1
+if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+  echo "banner_loaded=1" > "$banner_status_file"
 fi
 
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
