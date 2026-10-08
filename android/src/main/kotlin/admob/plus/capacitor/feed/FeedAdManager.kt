@@ -3,6 +3,7 @@ package admob.plus.capacitor.feed
 import admob.plus.capacitor.AdMobPlusPlugin
 import admob.plus.capacitor.Generated
 import android.graphics.Color
+import android.util.Log
 import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
@@ -30,6 +31,7 @@ import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
 import kotlin.math.max
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
+private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
 
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     private val entries = mutableMapOf<Int, FeedAdEntry>()
@@ -224,6 +226,7 @@ private class FeedAdEntry(
         ad.starRating?.let { assets.put("starRating", it) }
         ad.mediaContent?.aspectRatio?.let { assets.put("mediaAspectRatio", it) }
         emitFeed(Generated.Events.FEED_LOAD, assets)
+        Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load id=$id format=native")
         finishLoad(null)
     }
 
@@ -321,6 +324,7 @@ private class FeedAdEntry(
                     assets.put("width", adSize.width)
                     assets.put("height", adSize.height)
                     emitFeed(Generated.Events.FEED_LOAD, assets)
+                    Log.i(FEED_SCREENSHOT_LOG_TAG, "feed_load id=$id format=banner")
                     finishLoad(null)
                 }
 
