@@ -49,12 +49,41 @@ assert_app_in_foreground() {
   return 1
 }
 
-launch_main_activity() {
+cold_start_app() {
   wake_device
   adb logcat -c >/dev/null 2>&1 || true
   adb shell am start -W -S -n "${MAIN_ACTIVITY}"
-  sleep 4
+  sleep 5
   assert_app_in_foreground
+}
+
+ensure_foreground() {
+  wake_device
+  adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+  sleep 2
+  assert_app_in_foreground
+}
+
+ui_hierarchy_dump() {
+  adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 || true
+  adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true
+}
+
+assert_example_app_on_screen() {
+  local dump
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -q "package=\"${APP_ID}\""; then
+    return 0
+  fi
+  if echo "$dump" | grep -q 'nexuslauncher'; then
+    ensure_foreground
+    dump=$(ui_hierarchy_dump)
+  fi
+  if echo "$dump" | grep -q "package=\"${APP_ID}\""; then
+    return 0
+  fi
+  echo "Example app UI not present in hierarchy"
+  return 1
 }
 
 wait_for_log_pattern() {
@@ -63,10 +92,7 @@ wait_for_log_pattern() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if (( i % 10 == 0 )); then
-      wake_device
-      adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
-      sleep 2
-      assert_app_in_foreground || true
+      ensure_foreground || true
     fi
     if adb logcat -d 2>/dev/null | grep -F "$pattern" | grep -q .; then
       return 0
@@ -84,9 +110,7 @@ wait_for_feed_load() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if (( i % 10 == 0 )); then
-      wake_device
-      adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
-      sleep 2
+      ensure_foreground || true
     fi
     if adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q "feed_load id=.* format=${format}"; then
       return 0
@@ -102,40 +126,46 @@ scroll_feed_list_down() {
   local count="${1:-4}"
   local _i
   for ((_i = 0; _i < count; _i++)); do
+    ensure_foreground || true
     adb shell input swipe 400 1100 400 450 280
     sleep 0.45
   done
 }
 
-scroll_until_ad_in_hierarchy() {
-  local attempts="${1:-18}"
+hierarchy_shows_ad_overlay() {
+  local dump="$1"
+  echo "$dump" | grep -qiE 'GmsAd|AdView|text="Test Ad"|text="Install"|text="Open"'
+}
+
+scroll_until_ad_visible() {
+  local attempts="${1:-22}"
   local i dump
   for (( i = 1; i <= attempts; i++ )); do
-    adb shell uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 || true
-    dump=$(adb exec-out cat /sdcard/window_dump.xml 2>/dev/null || true)
-    if echo "$dump" | grep -qiE 'GmsAd|AdView|text="Test Ad"|text="Install"|text="Open"'; then
+    ensure_foreground
+    assert_example_app_on_screen
+    dump=$(ui_hierarchy_dump)
+    if hierarchy_shows_ad_overlay "$dump"; then
       return 0
     fi
     scroll_feed_list_down 1
-    sleep 0.6
+    sleep 0.5
   done
-  echo "Ad view not found in UI hierarchy before screenshot"
-  echo "$dump" | head -c 2000 || true
+  echo "Ad overlay not found in UI hierarchy"
+  echo "$dump" | head -c 2500 || true
   return 1
 }
 
 capture_screenshot() {
   local outfile="$1"
-  wake_device
-  adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
-  sleep 2
-  assert_app_in_foreground
+  ensure_foreground
+  assert_example_app_on_screen
   sleep 0.75
   adb exec-out screencap -p > "$outfile"
   if [[ ! -s "$outfile" ]]; then
     echo "Empty screenshot at ${outfile}"
     return 1
   fi
+  assert_app_in_foreground
 }
 
 validate_png_pair() {
@@ -156,7 +186,7 @@ validate_png_pair() {
 
 adb install -r "$apk_path"
 keep_screen_on
-launch_main_activity
+cold_start_app
 
 if ! wait_for_log_pattern "$CI_FEED_MARKER" 60; then
   echo "Feed section never became visible in logcat"
@@ -180,8 +210,9 @@ native_raw="$screenshots_dir/feed-native-raw.png"
 banner_raw="$screenshots_dir/feed-banner-raw.png"
 
 if [[ "$native_loaded" == true ]]; then
-  launch_main_activity
-  scroll_until_ad_in_hierarchy 14
+  ensure_foreground
+  scroll_feed_list_down 2
+  scroll_until_ad_visible 16
   capture_screenshot "$native_raw"
   convert "$native_raw" -strip -resize 300x "$screenshots_dir/feed-native-in-feed.png"
 else
@@ -189,9 +220,9 @@ else
   rm -f "$screenshots_dir/feed-native-in-feed.png" "$native_raw"
 fi
 
-launch_main_activity
-scroll_feed_list_down 4
-scroll_until_ad_in_hierarchy 20
+ensure_foreground
+scroll_feed_list_down 8
+scroll_until_ad_visible 24
 sleep 2
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
