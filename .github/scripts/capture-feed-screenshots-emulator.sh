@@ -81,8 +81,15 @@ cold_start_app() {
     adb logcat -c >/dev/null 2>&1 || true
   fi
   adb shell am start -W -S -n "${MAIN_ACTIVITY}"
-  sleep 5
-  dismiss_blocking_dialogs
+  local i
+  for (( i = 1; i <= 15; i++ )); do
+    sleep 2
+    wake_device
+    dismiss_blocking_dialogs
+    if assert_app_in_foreground 2>/dev/null; then
+      return 0
+    fi
+  done
   assert_app_in_foreground
 }
 
