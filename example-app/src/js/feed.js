@@ -10,6 +10,7 @@ const feedLog = document.getElementById('feedLog');
 const feedList = document.getElementById('feedList');
 
 const feedAds = [];
+const attachedFeedSlotKeys = new Set();
 let feedAttachInProgress = false;
 
 const logFeed = (message, details) => {
@@ -67,8 +68,18 @@ const attachFeedAds = async () => {
     return;
   }
 
-  if (feedAds.length > 0 || feedAttachInProgress) {
-    logFeed('Feed ads already attached or attach in progress');
+  if (feedAttachInProgress) {
+    logFeed('Feed attach already in progress');
+    return;
+  }
+
+  const slots = [...feedList.querySelectorAll('.feed-ad-slot')].filter((slot) => {
+    const positionKey = `feed-slot-${slot.dataset.adIndex}`;
+    return !attachedFeedSlotKeys.has(positionKey);
+  });
+
+  if (slots.length === 0) {
+    logFeed('All feed slots already attached');
     return;
   }
 
@@ -77,38 +88,38 @@ const attachFeedAds = async () => {
   try {
     await AdMob.start();
 
-    const slots = [...feedList.querySelectorAll('.feed-ad-slot')];
     for (const slot of slots) {
-    const placeholder = slot.querySelector('.feed-ad-placeholder');
-    if (!placeholder) continue;
+      const placeholder = slot.querySelector('.feed-ad-placeholder');
+      if (!placeholder) continue;
 
-    const isBanner = slot.classList.contains('banner');
-    const positionKey = `feed-slot-${slot.dataset.adIndex}`;
+      const isBanner = slot.classList.contains('banner');
+      const positionKey = `feed-slot-${slot.dataset.adIndex}`;
 
-    const feedAd = new FeedAd({
-      format: isBanner ? 'banner' : 'native',
-      adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
-      positionKey,
-      autoRefreshMs: 60000,
-      nativeStyle: {
-        backgroundColor: '#1c1c1c',
-        headlineTextColor: '#ffffff',
-        bodyTextColor: '#d0d0d0',
-        ctaBackgroundColor: '#2563eb',
-        ctaTextColor: '#ffffff',
-      },
-    });
+      const feedAd = new FeedAd({
+        format: isBanner ? 'banner' : 'native',
+        adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
+        positionKey,
+        autoRefreshMs: 60000,
+        nativeStyle: {
+          backgroundColor: '#1c1c1c',
+          headlineTextColor: '#ffffff',
+          bodyTextColor: '#d0d0d0',
+          ctaBackgroundColor: '#2563eb',
+          ctaTextColor: '#ffffff',
+        },
+      });
 
-    feedAds.push(feedAd);
-
-    try {
-      await feedAd.attachTo(placeholder);
-      const minHeight = isBanner ? 60 : 280;
-      placeholder.style.minHeight = `${minHeight}px`;
-      logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
-    } catch (error) {
-      logFeed(`Failed to attach ${positionKey}`, error);
-    }
+      try {
+        await feedAd.attachTo(placeholder);
+        feedAds.push(feedAd);
+        attachedFeedSlotKeys.add(positionKey);
+        const minHeight = isBanner ? 60 : 280;
+        placeholder.style.minHeight = `${minHeight}px`;
+        logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
+      } catch (error) {
+        await feedAd.destroy().catch(() => undefined);
+        logFeed(`Failed to attach ${positionKey}`, error);
+      }
     }
   } finally {
     feedAttachInProgress = false;
@@ -143,6 +154,7 @@ document.getElementById('feedDestroyButton')?.addEventListener('click', () => {
   Promise.all(feedAds.map((ad) => ad.destroy()))
     .then(() => {
       feedAds.length = 0;
+      attachedFeedSlotKeys.clear();
       logFeed('All feed ads destroyed');
     })
     .catch((error) => logFeed('Destroy failed', error));
