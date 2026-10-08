@@ -13,6 +13,7 @@ CI_NATIVE_SLOT_MARKER="CAPGO_CI_NATIVE_SLOT_READY"
 
 mkdir -p "$screenshots_dir"
 status_file="$screenshots_dir/native-ad-status.txt"
+banner_status_file="$screenshots_dir/banner-ad-status.txt"
 
 if [[ ! -f "$apk_path" ]]; then
   echo "Missing APK at $apk_path"
@@ -275,8 +276,8 @@ inspect_png_not_launcher() {
 assert_banner_screenshot_content() {
   local png="$1"
   local dump
-  if ! logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-    echo "Banner feed_load never logged before capture"
+  if [[ ! -f "$banner_status_file" ]]; then
+    echo "Banner load status file missing before capture"
     return 1
   fi
   dump=$(ui_hierarchy_dump)
@@ -304,6 +305,7 @@ if ! wait_for_feed_load banner 30; then
   exit 1
 fi
 
+echo "banner_loaded=1" > "$banner_status_file"
 sleep 4
 
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=native'; then
