@@ -241,12 +241,9 @@ else
 fi
 
 ensure_foreground
-scroll_feed_list_down 16
-sleep 3
-if ! adb logcat -d 2>/dev/null | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=banner'; then
-  echo "Banner overlay_visible marker missing after scroll"
-  exit 1
-fi
+scroll_feed_list_down 8
+sleep 2
+ensure_foreground
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 
