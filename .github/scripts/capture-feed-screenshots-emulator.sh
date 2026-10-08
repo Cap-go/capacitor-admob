@@ -399,24 +399,19 @@ assert_banner_screenshot_content() {
     echo "Screenshot validation sees the app crash dialog"
     return 1
   fi
-  if ! echo "$dump" | grep -qi 'In-Feed Native and Banner'; then
-    echo "Screenshot validation does not see section 5 in the UI hierarchy"
+  if ! logcat_snapshot | grep "${feed_log_tag}" | grep -q 'overlay_visible id=.* format=banner'; then
+    echo "Banner overlay_visible marker missing in logcat"
     return 1
   fi
-  if ! echo "$dump" | grep -qi 'banner overlay'; then
-    echo "Screenshot validation does not see the banner feed slot"
-    return 1
-  fi
-  stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-  if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
-    echo "Screenshot looks flat (stddev=${stddev}); banner likely not visible"
-    return 1
-  fi
-  dump=$(ui_hierarchy_dump)
-  if echo "$dump" | grep -qi 'Sponsored (banner overlay)'; then
+  stddev=$(convert "$png" -crop 85%x28%+7%+58% -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+  if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
     return 0
   fi
-  echo "No banner UI or feed_load confirmation for screenshot"
+  stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
+  if awk -v s="$stddev" 'BEGIN { exit !(s >= 2500) }'; then
+    return 0
+  fi
+  echo "Screenshot lacks banner-region contrast (stddev=${stddev})"
   return 1
 }
 
