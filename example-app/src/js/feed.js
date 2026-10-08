@@ -139,6 +139,8 @@ document.getElementById('feedDestroyButton')?.addEventListener('click', () => {
 const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
 
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
+  void SplashScreen.hide();
+  void CapacitorUpdater.notifyAppReady().catch(() => undefined);
   window.setTimeout(() => {
     document.getElementById('feedSection')?.scrollIntoView({ block: 'start' });
     attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
