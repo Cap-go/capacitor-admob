@@ -183,9 +183,33 @@ wait_for_native_slot_ready() {
   return 1
 }
 
+scroll_webview_to_feed_section() {
+  local dump attempt
+  display_metrics
+  local mid_x=$((DISPLAY_W / 2))
+  local y1=$((DISPLAY_H * 72 / 100))
+  local y2=$((DISPLAY_H * 28 / 100))
+  for attempt in $(seq 1 14); do
+    dump=$(ui_hierarchy_dump)
+    if echo "$dump" | grep -qE 'In-Feed|Sponsored \(banner'; then
+      return 0
+    fi
+    if echo "$dump" | grep -q 'SDK Setup'; then
+      adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 320
+      sleep 0.45
+      ensure_foreground || true
+      continue
+    fi
+    return 0
+  done
+  echo "Could not scroll the WebView to the feed section"
+  return 1
+}
+
 capture_screenshot() {
   local outfile="$1"
   ensure_foreground
+  scroll_webview_to_feed_section
   assert_example_app_on_screen
   sleep 1
   adb exec-out screencap -p > "$outfile"
@@ -214,7 +238,6 @@ validate_png_pair() {
 
 inspect_png_not_launcher() {
   local png="$1"
-  # Launcher/home frames are mostly dark wallpaper with a bright search bar strip near the top.
   local stats
   stats=$(convert "$png" -crop 90%x12%+5%+8% -format "%[mean]" info: 2>/dev/null || echo "")
   if [[ -n "$stats" ]] && awk -v m="$stats" 'BEGIN { exit (m > 45000) }'; then
@@ -222,6 +245,18 @@ inspect_png_not_launcher() {
     return 1
   fi
   return 0
+}
+
+assert_banner_screenshot_content() {
+  local png="$1"
+  local dump
+  scroll_webview_to_feed_section
+  dump=$(ui_hierarchy_dump)
+  if echo "$dump" | grep -q 'SDK Setup' && ! echo "$dump" | grep -qE 'In-Feed|Sponsored'; then
+    echo "Banner screenshot would show the SDK setup screen, not section 5"
+    return 1
+  fi
+  inspect_png_not_launcher "$png"
 }
 
 adb install -r "$apk_path"
@@ -258,7 +293,7 @@ ensure_foreground
 sleep 2
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-inspect_png_not_launcher "$screenshots_dir/feed-banner-in-feed.png"
+assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"
 
 if [[ "$native_loaded" == true ]] && wait_for_native_slot_ready 30; then
   ensure_foreground

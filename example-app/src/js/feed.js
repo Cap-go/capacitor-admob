@@ -139,9 +139,6 @@ const attachFeedAds = async () => {
       for (const slot of bannerSlots) {
         await attachSlot(slot);
       }
-      const bannerSlot = feedList.querySelector('.feed-ad-slot.banner');
-      bannerSlot?.scrollIntoView({ block: 'center', behavior: 'instant' });
-      console.info('CAPGO_CI_BANNER_SLOT_READY');
 
       void (async () => {
         for (const slot of nativeSlots) {
@@ -198,12 +195,27 @@ document.getElementById('feedDestroyButton')?.addEventListener('click', () => {
     .catch((error) => logFeed('Destroy failed', error));
 });
 
+const scrollFeedSectionIntoView = () => {
+  document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+};
+
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
   void CapacitorUpdater.notifyAppReady().catch(() => undefined);
-  window.setTimeout(() => {
-    document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  window.setTimeout(async () => {
+    scrollFeedSectionIntoView();
+    await new Promise((resolve) => window.setTimeout(resolve, 800));
+    scrollFeedSectionIntoView();
     console.info('CAPGO_CI_FEED_SECTION_VISIBLE');
-    attachFeedAds().catch((error) => logFeed('CI feed setup failed', error));
-  }, 6000);
+    try {
+      await attachFeedAds();
+      await new Promise((resolve) => window.setTimeout(resolve, 500));
+      scrollFeedSectionIntoView();
+      feedList.querySelector('.feed-ad-slot.banner')?.scrollIntoView({ block: 'center', behavior: 'instant' });
+      await new Promise((resolve) => window.setTimeout(resolve, 400));
+      console.info('CAPGO_CI_BANNER_SLOT_READY');
+    } catch (error) {
+      logFeed('CI feed setup failed', error);
+    }
+  }, 8000);
 }
