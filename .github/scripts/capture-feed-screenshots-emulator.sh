@@ -61,6 +61,11 @@ ensure_foreground() {
   wake_device
   adb shell am start -W -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
   sleep 2
+  if assert_app_in_foreground; then
+    return 0
+  fi
+  adb shell monkey -p "${APP_ID}" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+  sleep 2
   assert_app_in_foreground
 }
 
@@ -122,12 +127,29 @@ wait_for_feed_load() {
   return 1
 }
 
+display_metrics() {
+  local size line w h
+  line=$(adb shell wm size 2>/dev/null | grep -Eo '[0-9]+x[0-9]+' | tail -1)
+  w=${line%x*}
+  h=${line#*x}
+  if [[ -z "$w" || -z "$h" ]]; then
+    w=1080
+    h=1920
+  fi
+  DISPLAY_W=$w
+  DISPLAY_H=$h
+}
+
 scroll_feed_list_down() {
   local count="${1:-4}"
   local _i
+  display_metrics
+  local mid_x=$((DISPLAY_W / 2))
+  local y1=$((DISPLAY_H * 70 / 100))
+  local y2=$((DISPLAY_H * 35 / 100))
   for ((_i = 0; _i < count; _i++)); do
     ensure_foreground || true
-    adb shell input swipe 400 1100 400 450 280
+    adb shell input swipe "$mid_x" "$y1" "$mid_x" "$y2" 320
     sleep 0.45
   done
 }
@@ -138,7 +160,7 @@ hierarchy_shows_ad_overlay() {
 }
 
 scroll_until_ad_visible() {
-  local attempts="${1:-22}"
+  local attempts="${1:-14}"
   local i dump
   for (( i = 1; i <= attempts; i++ )); do
     ensure_foreground
@@ -150,7 +172,7 @@ scroll_until_ad_visible() {
     scroll_feed_list_down 1
     sleep 0.5
   done
-  echo "Ad overlay not found in UI hierarchy"
+  echo "Ad overlay not found in UI hierarchy after scrolling"
   echo "$dump" | head -c 2500 || true
   return 1
 }
@@ -221,8 +243,11 @@ else
 fi
 
 ensure_foreground
-scroll_feed_list_down 8
-scroll_until_ad_visible 24
+scroll_feed_list_down 3
+if ! scroll_until_ad_visible 16; then
+  echo "Could not find banner ad overlay in the feed"
+  exit 1
+fi
 sleep 2
 capture_screenshot "$banner_raw"
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
