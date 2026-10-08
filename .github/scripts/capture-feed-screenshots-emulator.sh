@@ -296,27 +296,7 @@ assert_banner_screenshot_content() {
   return 0
 }
 
-run_banner_capture_sidecar() {
-  stdbuf -oL adb logcat -v brief CapgoAdmobFeed:I Capacitor/Console:I *:S 2>/dev/null | while IFS= read -r line; do
-    if [[ "$line" == *"feed_load id="* ]] && [[ "$line" == *"format=banner"* ]]; then
-      echo "banner_loaded=1" > "$banner_status_file"
-    fi
-    if [[ "$line" != *"ci_banner_slot_ready"* ]] && [[ "$line" != *"CAPGO_CI_BANNER_SLOT_READY"* ]]; then
-      continue
-    fi
-    sleep 0.4
-    wake_device
-    adb exec-out screencap -p > "$banner_raw" || true
-    if [[ ! -s "$banner_raw" ]]; then
-      continue
-    fi
-    convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
-    if assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
-      exit 0
-    fi
-  done
-  exit 1
-}
+sidecar_script="$repo_root/.github/scripts/banner-capture-sidecar.py"
 
 adb install -r "$apk_path"
 keep_screen_on
@@ -328,7 +308,7 @@ banner_raw="$screenshots_dir/feed-banner-raw.png"
 native_raw="$screenshots_dir/feed-native-raw.png"
 
 adb logcat -c >/dev/null 2>&1 || true
-SKIP_LOGCAT_CLEAR=1 run_banner_capture_sidecar &
+python3 "$sidecar_script" "$banner_raw" &
 CAPTURE_PID=$!
 
 SKIP_LOGCAT_CLEAR=1 cold_start_app
@@ -347,8 +327,14 @@ if wait "$CAPTURE_PID" 2>/dev/null; then
   capture_exit=0
 fi
 
-if [[ "$capture_exit" -ne 0 ]] || [[ ! -f "$screenshots_dir/feed-banner-in-feed.png" ]]; then
+if [[ "$capture_exit" -ne 0 ]] || [[ ! -s "$banner_raw" ]]; then
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
+  exit 1
+fi
+
+echo "banner_loaded=1" > "$banner_status_file"
+convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
+if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
   exit 1
 fi
 
