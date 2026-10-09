@@ -122,11 +122,13 @@ private class FeedAdEntry(
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
+    private val ciBannerSnapshotToken = Any()
 
     val isLoaded: Boolean
         get() = loaded
 
     fun destroy() {
+        mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
         nativeNoFillRetryRunnable?.let { mainHandler.removeCallbacks(it) }
@@ -209,7 +211,7 @@ private class FeedAdEntry(
     }
 
     private fun scheduleCiBannerOverlaySnapshotAfterLoad() {
-        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+        if (!isDebugBuild() || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
@@ -218,7 +220,15 @@ private class FeedAdEntry(
             val w = host.width.takeIf { it > 20 } ?: lp?.width ?: 0
             val h = host.height.takeIf { it > 10 } ?: lp?.height ?: 0
             if (w > 20 && h > 10) {
-                mainHandler.post { writeCiBannerOverlaySnapshotNow(host, w, h) }
+                mainHandler.postDelayed(
+                    {
+                        if (!ciBannerSnapshotWritten) {
+                            writeCiBannerOverlaySnapshotNow(host, w, h)
+                        }
+                    },
+                    ciBannerSnapshotToken,
+                    0L,
+                )
             }
         }
         val delaysMs = longArrayOf(150L, 400L, 900L, 1_600L, 2_400L)
@@ -234,12 +244,19 @@ private class FeedAdEntry(
                         }
                     }
                 },
+                ciBannerSnapshotToken,
                 delayMs,
             )
         }
     }
 
+    private fun isDebugBuild(): Boolean =
+        (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
     private fun writeCiBannerOverlaySnapshotNow(host: View, layoutW: Int, layoutH: Int) {
+        if (!isDebugBuild()) {
+            return
+        }
         var width = if (host.width >= 20) host.width else layoutW
         var height = if (host.height >= 10) host.height else layoutH
         if (width < 20 || height < 10) {

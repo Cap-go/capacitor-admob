@@ -407,18 +407,9 @@ assert_banner_screenshot_content() {
     echo "Banner load status file missing before capture"
     return 1
   fi
-  if grep -q 'banner_overlay_snapshot=1' "$banner_status_file" 2>/dev/null; then
-    stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-    if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
-      if logcat_snapshot | grep -F "ci_banner_snapshot_written" | grep -q . &&
-        logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-        echo "Banner overlay snapshot is flat in pixels (stddev=${stddev}) but logcat confirms banner load"
-        return 0
-      fi
-      echo "Banner overlay snapshot looks flat (stddev=${stddev})"
-      return 1
-    fi
-    return 0
+  if grep -q 'banner_in_feed_capture=synthetic' "$banner_status_file" 2>/dev/null; then
+    echo "Refusing to validate synthetic banner-in-feed capture"
+    return 1
   fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
@@ -525,11 +516,6 @@ for _quick in $(seq 1 60); do
         echo "Quick screencap captured banner in feed (stddev=${stddev})"
         break
       fi
-      if [[ "$overlay_ok" == true ]] && awk -v s="$stddev" 'BEGIN { exit !(s >= 600) }'; then
-        banner_capture_ok=true
-        echo "Feed screencap with overlay proof (stddev=${stddev})"
-        break
-      fi
     fi
   fi
   sleep 0.5
@@ -541,44 +527,24 @@ if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 15; then
   banner_capture_ok=true
 fi
 
-if [[ "$banner_capture_ok" != true && "$overlay_ok" == true && -f "$best_feed_screencap" ]] &&
-  inspect_png_not_launcher "$best_feed_screencap"; then
-  convert "$best_feed_screencap" \
-    \( "$overlay_proof" -resize 90%x \) \
-    -gravity center -geometry +0+80 -composite \
-    "$banner_raw"
-  banner_capture_ok=true
-  echo "Composited validated test banner overlay onto feed screencap for PR capture"
-fi
-
-if [[ "$banner_capture_ok" != true && "$overlay_ok" == true ]]; then
-  display_metrics
-  convert -size "${DISPLAY_W}x${DISPLAY_H}" canvas:'#f3f4f6' \
-    -fill '#111827' -font DejaVu-Sans -pointsize 32 -annotate +48+140 'In-Feed Ads (section 5)' \
-    -fill '#6b7280' -pointsize 22 -annotate +48+190 'Sponsored (banner) — CI capture' \
-    \( "$overlay_proof" -resize "$((DISPLAY_W * 9 / 10))"x \) \
-    -gravity north -geometry +0+260 -composite \
-    "$banner_raw"
-  banner_capture_ok=true
-  echo "Built PR feed frame from validated Google test banner overlay"
-fi
-
 if [[ "$banner_capture_ok" != true ]]; then
   echo "Could not capture a validated banner-in-feed screenshot"
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
   exit 1
 fi
 
-if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-  echo "banner_loaded=1" >> "$banner_status_file"
-fi
+{
+  echo "banner_in_feed_capture=screencap"
+  echo "banner_overlay_snapshot=1"
+  if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
+    echo "banner_loaded=1"
+  fi
+} > "$banner_status_file"
 
 if [[ "$overlay_ok" != true ]] || [[ ! -f "$overlay_proof" ]] || ! validate_overlay_banner_png "$overlay_proof"; then
   echo "Missing validated banner overlay proof PNG (Google test ad pixels)"
   exit 1
 fi
-
-echo "banner_overlay_snapshot=1" > "$banner_status_file"
 
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
