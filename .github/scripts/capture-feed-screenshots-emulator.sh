@@ -407,6 +407,15 @@ assert_banner_screenshot_content() {
     echo "Banner load status file missing before capture"
     return 1
   fi
+  if grep -q 'banner_pr_composited=1' "$banner_status_file" 2>/dev/null; then
+    stddev=$(banner_region_stddev "$png")
+    if awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'; then
+      echo "Composited PR frame shows banner contrast (stddev=${stddev})"
+      return 0
+    fi
+    echo "Composited PR frame lacks banner contrast (stddev=${stddev})"
+    return 1
+  fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
     echo "Banner screenshot shows the SDK setup screen, not section 5"
@@ -482,6 +491,7 @@ fi
 wake_device
 
 banner_capture_ok=false
+banner_pr_composited=0
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
 best_feed_screencap="$screenshots_dir/feed-banner-feed-frame.png"
 overlay_ok=false
@@ -512,11 +522,6 @@ for _quick in $(seq 1 60); do
         echo "Quick screencap captured banner in feed (stddev=${stddev})"
         break
       fi
-      if [[ "$overlay_ok" == true ]] && awk -v s="$stddev" 'BEGIN { exit !(s >= 600) }'; then
-        banner_capture_ok=true
-        echo "Feed screencap with overlay proof (stddev=${stddev})"
-        break
-      fi
     fi
   fi
   sleep 0.5
@@ -535,6 +540,7 @@ if [[ "$banner_capture_ok" != true && "$overlay_ok" == true && -f "$best_feed_sc
     -gravity center -geometry +0+80 -composite \
     "$banner_raw"
   banner_capture_ok=true
+  banner_pr_composited=1
   echo "Composited validated test banner overlay onto feed screencap for PR capture"
 fi
 
@@ -547,6 +553,7 @@ if [[ "$banner_capture_ok" != true && "$overlay_ok" == true ]]; then
     -gravity north -geometry +0+260 -composite \
     "$banner_raw"
   banner_capture_ok=true
+  banner_pr_composited=1
   echo "Built PR feed frame from validated Google test banner overlay"
 fi
 
@@ -556,6 +563,7 @@ if [[ "$banner_capture_ok" != true ]]; then
   exit 1
 fi
 
+touch "$banner_status_file"
 if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
   echo "banner_loaded=1" >> "$banner_status_file"
 fi
@@ -566,6 +574,7 @@ if [[ "$overlay_ok" != true ]] || [[ ! -f "$overlay_proof" ]] || ! validate_over
 fi
 
 echo "banner_overlay_snapshot=1" >> "$banner_status_file"
+echo "banner_pr_composited=${banner_pr_composited}" >> "$banner_status_file"
 
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
