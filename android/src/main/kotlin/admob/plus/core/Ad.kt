@@ -6,16 +6,14 @@ import android.view.ViewGroup
 import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
 import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardItem
-import java.util.Objects
-
 abstract class Ad(val id: Int, val adUnitId: String) {
     init {
         Helper.ads.put(id, this)
     }
 
     constructor(ctx: Context) : this(
-        Objects.requireNonNull<Int?>(ctx.optId()),
-        Objects.requireNonNull<String?>(ctx.optAdUnitID())
+        requireNotNull(ctx.optId()) { "Ad id is required" },
+        requireNotNull(ctx.optAdUnitID()) { "Ad unit id is required" }
     )
 
     open fun destroy() {
