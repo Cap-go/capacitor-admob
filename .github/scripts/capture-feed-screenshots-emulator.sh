@@ -489,6 +489,16 @@ pull_ci_banner_snapshot() {
   is_valid_png_file "$destination"
 }
 
+pull_ci_feed_screencap_snapshot() {
+  local destination="${1:-$banner_raw}"
+  adb exec-out run-as "${APP_ID}" cat cache/ci_feed_screencap.png > "$destination" 2>/dev/null || true
+  if ! is_valid_png_file "$destination"; then
+    rm -f "$destination"
+    adb shell run-as "${APP_ID}" cat cache/ci_feed_screencap.png > "$destination" 2>/dev/null || true
+  fi
+  is_valid_png_file "$destination"
+}
+
 adb install -r "$apk_path"
 keep_screen_on
 
@@ -571,6 +581,15 @@ if [[ "$banner_capture_ok" != true ]] && capture_banner_in_foreground 15; then
   banner_capture_ok=true
 fi
 
+banner_in_feed_capture_mode=screencap
+if [[ "$banner_capture_ok" != true ]] &&
+  pull_ci_feed_screencap_snapshot "$banner_raw" &&
+  banner_screencap_has_feed_ad "$banner_raw"; then
+  banner_capture_ok=true
+  banner_in_feed_capture_mode=activity_snapshot
+  echo "Using debug activity snapshot for in-feed banner capture"
+fi
+
 if [[ "$banner_capture_ok" != true ]]; then
   echo "Could not capture a validated banner-in-feed screenshot"
   logcat_snapshot | grep -E "${feed_log_tag}|CAPGO_CI" | tail -40 || true
@@ -578,7 +597,7 @@ if [[ "$banner_capture_ok" != true ]]; then
 fi
 
 {
-  echo "banner_in_feed_capture=screencap"
+  echo "banner_in_feed_capture=${banner_in_feed_capture_mode}"
   echo "banner_overlay_snapshot=1"
   if logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
     echo "banner_loaded=1"
