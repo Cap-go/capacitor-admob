@@ -206,8 +206,9 @@ capture_banner_in_foreground() {
   local i
   for (( i = 1; i <= attempts; i++ )); do
     if ! assert_app_in_foreground 2>/dev/null; then
-      if (( i % 4 == 0 )); then
-        ensure_foreground || true
+      if (( i % 3 == 0 )); then
+        warm_resume_app
+        sleep 1
       else
         sleep 0.5
       fi
@@ -242,6 +243,21 @@ capture_banner_in_foreground() {
   return 1
 }
 
+warm_resume_app() {
+  wake_device
+  adb shell am start -n "${MAIN_ACTIVITY}" >/dev/null 2>&1 || true
+}
+
+banner_screencap_has_feed_ad() {
+  local png="$1"
+  local stddev
+  if ! is_valid_png_file "$png" || ! inspect_png_not_launcher "$png"; then
+    return 1
+  fi
+  stddev=$(banner_region_stddev "$png")
+  awk -v s="$stddev" 'BEGIN { exit !(s >= 1200) }'
+}
+
 capture_banner_frame_if_foreground() {
   if ! assert_app_in_foreground 2>/dev/null; then
     return 1
@@ -249,6 +265,22 @@ capture_banner_frame_if_foreground() {
   pull_ci_banner_snapshot || true
   adb exec-out screencap -p > "$banner_raw"
   is_valid_png_file "$banner_raw"
+}
+
+capture_banner_screencap_when_ready() {
+  if ! logcat_snapshot | grep -E 'ci_banner_slot_ready|overlay_visible id=.* format=banner' | grep -q .; then
+    return 1
+  fi
+  if ! assert_app_in_foreground 2>/dev/null; then
+    warm_resume_app
+    sleep 1
+  fi
+  if ! assert_app_in_foreground 2>/dev/null; then
+    return 1
+  fi
+  dismiss_blocking_dialogs
+  capture_banner_frame_if_foreground || return 1
+  banner_screencap_has_feed_ad "$banner_raw"
 }
 
 wait_for_feed_load() {
@@ -486,9 +518,19 @@ fi
 wake_device
 
 banner_capture_ok=false
+for _burst in $(seq 1 100); do
+  if capture_banner_screencap_when_ready; then
+    banner_capture_ok=true
+    echo "Captured banner-in-feed during post-load burst (attempt ${_burst})"
+    break
+  fi
+  sleep 0.2
+done
+
 overlay_proof="$screenshots_dir/feed-banner-overlay-proof.png"
 best_feed_screencap="$screenshots_dir/feed-banner-feed-frame.png"
 overlay_ok=false
+if [[ "$banner_capture_ok" != true ]]; then
 for _quick in $(seq 1 60); do
   if pull_ci_banner_snapshot && validate_overlay_banner_png "$banner_raw"; then
     cp "$banner_raw" "$overlay_proof"
@@ -520,6 +562,7 @@ for _quick in $(seq 1 60); do
   fi
   sleep 0.5
 done
+fi
 
 scroll_webview_to_feed_section || true
 
