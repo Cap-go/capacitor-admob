@@ -122,7 +122,6 @@ private class FeedAdEntry(
     private var nativeNoFillRetryRunnable: Runnable? = null
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
-    private var ciFeedScreencapWritten = false
     private val ciBannerSnapshotToken = Any()
 
     val isLoaded: Boolean
@@ -212,7 +211,7 @@ private class FeedAdEntry(
     }
 
     private fun scheduleCiBannerOverlaySnapshotAfterLoad() {
-        if (!isDebugBuild() || ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
+        if (ciBannerSnapshotWritten || format != FeedAdFormat.BANNER) {
             return
         }
         Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_schedule id=$id")
@@ -251,13 +250,7 @@ private class FeedAdEntry(
         }
     }
 
-    private fun isDebugBuild(): Boolean =
-        (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-
     private fun writeCiBannerOverlaySnapshotNow(host: View, layoutW: Int, layoutH: Int) {
-        if (!isDebugBuild()) {
-            return
-        }
         var width = if (host.width >= 20) host.width else layoutW
         var height = if (host.height >= 10) host.height else layoutH
         if (width < 20 || height < 10) {
@@ -289,51 +282,10 @@ private class FeedAdEntry(
             }
             ciBannerSnapshotWritten = true
             Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_banner_snapshot_written path=${file.absolutePath}")
-            writeCiFeedScreencapSnapshotNow()
         } catch (e: Exception) {
             Log.i(
                 FEED_SCREENSHOT_LOG_TAG,
                 "ci_banner_snapshot_failed message=${e.message}",
-            )
-        } finally {
-            bitmap?.recycle()
-        }
-    }
-
-    private fun writeCiFeedScreencapSnapshotNow() {
-        if (!isDebugBuild() || ciFeedScreencapWritten) {
-            return
-        }
-        val activity = plugin.activity ?: return
-        val decor = activity.window?.decorView ?: return
-        var width = decor.width
-        var height = decor.height
-        if (width < 100 || height < 100) {
-            width = decor.measuredWidth
-            height = decor.measuredHeight
-        }
-        if (width < 100 || height < 100) {
-            Log.i(
-                FEED_SCREENSHOT_LOG_TAG,
-                "ci_feed_screencap_failed message=decor_not_laid_out w=$width h=$height",
-            )
-            return
-        }
-        var bitmap: Bitmap? = null
-        try {
-            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            decor.draw(canvas)
-            val file = File(plugin.context.cacheDir, "ci_feed_screencap.png")
-            FileOutputStream(file).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            ciFeedScreencapWritten = true
-            Log.i(FEED_SCREENSHOT_LOG_TAG, "ci_feed_screencap_written path=${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.i(
-                FEED_SCREENSHOT_LOG_TAG,
-                "ci_feed_screencap_failed message=${e.message}",
             )
         } finally {
             bitmap?.recycle()
