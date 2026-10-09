@@ -407,19 +407,6 @@ assert_banner_screenshot_content() {
     echo "Banner load status file missing before capture"
     return 1
   fi
-  if grep -q 'banner_overlay_snapshot=1' "$banner_status_file" 2>/dev/null; then
-    stddev=$(convert "$png" -format "%[standard-deviation]" info: 2>/dev/null || echo "0")
-    if awk -v s="$stddev" 'BEGIN { exit !(s < 800) }'; then
-      if logcat_snapshot | grep -F "ci_banner_snapshot_written" | grep -q . &&
-        logcat_snapshot | grep "${feed_log_tag}" | grep -q 'feed_load id=.* format=banner'; then
-        echo "Banner overlay snapshot is flat in pixels (stddev=${stddev}) but logcat confirms banner load"
-        return 0
-      fi
-      echo "Banner overlay snapshot looks flat (stddev=${stddev})"
-      return 1
-    fi
-    return 0
-  fi
   dump=$(ui_hierarchy_dump)
   if echo "$dump" | grep -qE 'SDK Setup|Start AdMob'; then
     echo "Banner screenshot shows the SDK setup screen, not section 5"
@@ -505,11 +492,11 @@ for _quick in $(seq 1 60); do
       overlay_ok=true
       echo "Validated banner overlay snapshot from app cache"
       for _fg in 1 2 3 4 5 6 7 8 9 10; do
-        if assert_app_in_foreground 2>/dev/null; then
-          adb exec-out screencap -p > "$best_feed_screencap"
-          if is_valid_png_file "$best_feed_screencap" && inspect_png_not_launcher "$best_feed_screencap"; then
-            break
-          fi
+        if assert_app_in_foreground 2>/dev/null &&
+          adb exec-out screencap -p > "$best_feed_screencap" &&
+          is_valid_png_file "$best_feed_screencap" &&
+          inspect_png_not_launcher "$best_feed_screencap"; then
+          break
         fi
         sleep 0.25
       done
@@ -578,7 +565,7 @@ if [[ "$overlay_ok" != true ]] || [[ ! -f "$overlay_proof" ]] || ! validate_over
   exit 1
 fi
 
-echo "banner_overlay_snapshot=1" > "$banner_status_file"
+echo "banner_overlay_snapshot=1" >> "$banner_status_file"
 
 convert "$banner_raw" -strip -resize 300x "$screenshots_dir/feed-banner-in-feed.png"
 if ! assert_banner_screenshot_content "$screenshots_dir/feed-banner-in-feed.png"; then
