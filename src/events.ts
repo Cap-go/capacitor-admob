@@ -39,6 +39,13 @@ export const AdMobPlusEvents = {
   RewardedReward: 'rewarded.reward',
   RewardedShow: 'rewarded.show',
   RewardedShowFail: 'rewarded.showfail',
+  FeedClick: 'feed.click',
+  FeedClose: 'feed.close',
+  FeedImpression: 'feed.impression',
+  FeedLoad: 'feed.load',
+  FeedLoadFail: 'feed.loadfail',
+  FeedOpen: 'feed.open',
+  FeedRefresh: 'feed.refresh',
 } as const;
 
 export type AdMobPlusEventName = (typeof AdMobPlusEvents)[keyof typeof AdMobPlusEvents];
@@ -47,6 +54,17 @@ export type AdMobPlusEventName = (typeof AdMobPlusEvents)[keyof typeof AdMobPlus
 export type AdMobPlusAdIdPayload = {
   adId: number;
   id?: number;
+};
+
+/** In-feed ad events use `feedAdId` (same numeric id as `feedAdCreate`). */
+export type AdMobPlusFeedAdIdPayload = {
+  feedAdId: number;
+  positionKey?: string;
+  format?: 'native' | 'banner';
+};
+
+export type AdMobPlusFeedLoadPayload = AdMobPlusFeedAdIdPayload & {
+  assets?: Record<string, unknown>;
 };
 
 /** Load and fullscreen show failure payloads from native `LoadAdError` / `FullScreenContentError`. */
@@ -106,4 +124,11 @@ export type AdMobPlusEventPayloadMap = {
   [AdMobPlusEvents.RewardedReward]: AdMobPlusAdRewardPayload;
   [AdMobPlusEvents.RewardedShow]: AdMobPlusAdIdPayload;
   [AdMobPlusEvents.RewardedShowFail]: AdMobPlusAdFailurePayload;
+  [AdMobPlusEvents.FeedClick]: AdMobPlusFeedAdIdPayload;
+  [AdMobPlusEvents.FeedClose]: AdMobPlusFeedAdIdPayload;
+  [AdMobPlusEvents.FeedImpression]: AdMobPlusFeedAdIdPayload;
+  [AdMobPlusEvents.FeedLoad]: AdMobPlusFeedLoadPayload;
+  [AdMobPlusEvents.FeedLoadFail]: AdMobPlusAdFailurePayload & AdMobPlusFeedAdIdPayload;
+  [AdMobPlusEvents.FeedOpen]: AdMobPlusFeedAdIdPayload;
+  [AdMobPlusEvents.FeedRefresh]: AdMobPlusFeedAdIdPayload;
 };

@@ -13,7 +13,7 @@ abstract class Ad(val id: Int, val adUnitId: String) {
 
     constructor(ctx: Context) : this(
         requireNotNull(ctx.optId()) { "Ad id is required" },
-        requireNotNull(ctx.optAdUnitID()) { "Ad unit id is required" }
+        requireNotNull(ctx.optAdUnitID()) { "Ad unit id is required" },
     )
 
     open fun destroy() {

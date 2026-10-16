@@ -37,4 +37,11 @@ struct Events {
     static let rewardedReward = "rewarded.reward"
     static let rewardedShow = "rewarded.show"
     static let rewardedShowFail = "rewarded.showfail"
+    static let feedClick = "feed.click"
+    static let feedClose = "feed.close"
+    static let feedImpression = "feed.impression"
+    static let feedLoad = "feed.load"
+    static let feedLoadFail = "feed.loadfail"
+    static let feedOpen = "feed.open"
+    static let feedRefresh = "feed.refresh"
 }

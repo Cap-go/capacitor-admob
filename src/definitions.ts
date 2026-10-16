@@ -205,6 +205,95 @@ export type RewardedInterstitialAdOptions = MobileAdOptions & {
 };
 
 /**
+ * In-feed ad format. Both use a native overlay aligned to an HTML placeholder.
+ *
+ * @since 8.3.0
+ */
+export type FeedAdFormat = 'native' | 'banner';
+
+/**
+ * Optional colors for the built-in native ad template (hex strings, e.g. `#ffffff`).
+ *
+ * @since 8.3.0
+ */
+export type FeedNativeAdStyle = {
+  backgroundColor?: string;
+  headlineTextColor?: string;
+  bodyTextColor?: string;
+  ctaBackgroundColor?: string;
+  ctaTextColor?: string;
+};
+
+/**
+ * Options for creating an in-feed ad instance.
+ *
+ * Policy: AdMob counts native impressions and clicks only when assets render inside
+ * {@link https://developers.google.com/admob/android/native/advanced | NativeAdView} /
+ * GADNativeAdView with the AdChoices icon and an ad attribution badge. This plugin
+ * overlays a compliant native view on your placeholder. Optional {@link FeedNativeAdAssets}
+ * are returned on `feed.load` for layout sizing only, not for manual click forwarding.
+ *
+ * @since 8.3.0
+ */
+export type FeedAdCreateOptions = {
+  /** Native advanced or inline banner. */
+  format: FeedAdFormat;
+  /** AdMob ad unit ID. */
+  adUnitId: string;
+  /** Optional key echoed on feed events for your feed slot. */
+  positionKey?: string;
+  /**
+   * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds.
+   * Omit or pass `null` to disable auto-refresh.
+   */
+  autoRefreshMs?: number | null;
+  /** Template colors when `format` is `native`. */
+  nativeStyle?: FeedNativeAdStyle;
+};
+
+/**
+ * Normalized native ad assets for placeholder sizing. Clicks and impressions stay on the native view.
+ *
+ * @since 8.3.0
+ */
+export type FeedNativeAdAssets = {
+  headline?: string;
+  body?: string;
+  callToAction?: string;
+  advertiser?: string;
+  price?: string;
+  store?: string;
+  starRating?: number;
+  mediaAspectRatio?: number;
+};
+
+/**
+ * Banner size hints returned when a feed banner loads.
+ *
+ * @since 8.3.0
+ */
+export type FeedBannerAdAssets = {
+  width: number;
+  height: number;
+};
+
+/**
+ * Bounds of the HTML placeholder, in CSS pixels relative to the WebView viewport.
+ *
+ * @since 8.3.0
+ */
+export type FeedAdBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** When false, the native overlay is hidden (e.g. off-screen while scrolling). */
+  visible: boolean;
+  /** `window.devicePixelRatio` from the WebView. Defaults to 1 on web. */
+  density?: number;
+};
+
+/**
  * AdMob Plus Plugin interface for displaying Google AdMob ads in Capacitor apps.
  *
  * @since 1.0.0
@@ -382,6 +471,64 @@ export interface AdMobPlusPlugin {
    * ```
    */
   adHide(opts: { id: number }): Promise<void>;
+
+  /**
+   * Create an in-feed ad slot (native overlay or inline banner overlay).
+   *
+   * @param opts - Feed ad configuration
+   * @returns Promise that resolves with the feed ad instance id
+   * @since 8.3.0
+   * @example
+   * ```typescript
+   * const { id } = await AdMob.feedAdCreate({
+   *   format: 'native',
+   *   adUnitId: 'ca-app-pub-3940256099942544/2247696110',
+   *   positionKey: 'feed-3',
+   *   autoRefreshMs: 60000,
+   * });
+   * ```
+   */
+  feedAdCreate(opts: FeedAdCreateOptions): Promise<{ id: number }>;
+
+  /**
+   * Destroy a feed ad instance and remove its native overlay.
+   *
+   * @param opts - Object containing the feed ad id
+   * @since 8.3.0
+   */
+  feedAdDestroy(opts: { id: number }): Promise<void>;
+
+  /**
+   * Load or reload the feed ad. Listen for `feed.load` / `feed.loadfail` events.
+   *
+   * @param opts - Object containing the feed ad id
+   * @since 8.3.0
+   */
+  feedAdLoad(opts: { id: number }): Promise<void>;
+
+  /**
+   * Whether the feed ad has finished loading.
+   *
+   * @param opts - Object containing the feed ad id
+   * @since 8.3.0
+   */
+  feedAdIsLoaded(opts: { id: number }): Promise<boolean>;
+
+  /**
+   * Position the native overlay over an HTML placeholder. Call on scroll, resize, and orientation changes.
+   *
+   * @param opts - Feed ad id and bounds from `element.getBoundingClientRect()`
+   * @since 8.3.0
+   */
+  feedAdUpdateBounds(opts: FeedAdBounds & { id: number }): Promise<void>;
+
+  /**
+   * Enable or disable auto-refresh (minimum 30 seconds).
+   *
+   * @param opts - Feed ad id and interval in ms, or `null` to disable
+   * @since 8.3.0
+   */
+  feedAdSetAutoRefresh(opts: { id: number; autoRefreshMs: number | null }): Promise<void>;
 
   /**
    * Get the current tracking authorization status (iOS only).

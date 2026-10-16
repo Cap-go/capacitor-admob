@@ -1,0 +1,109 @@
+name: PR feed ad screenshots
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pr-feed-screenshots-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build_example_apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Build example APK
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run build
+          cd example-app
+          bun install --frozen-lockfile
+          VITE_CI_FEED=1 bun run build
+          bunx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-app-debug-apk
+          path: example-app/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  capture_feed_screenshots:
+    needs: build_example_apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: example-app-debug-apk
+          path: apk
+
+      - name: Install ImageMagick
+        run: |
+          if command -v convert >/dev/null 2>&1; then
+            convert -version | head -1
+            exit 0
+          fi
+          sudo apt-get install -y --no-install-recommends imagemagick
+
+      - name: Enable KVM
+        run: |
+          set -euo pipefail
+          if [[ ! -e /dev/kvm ]]; then
+            echo "No /dev/kvm on runner; emulator will be slow"
+            exit 0
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo chmod 666 /dev/kvm
+          ls -la /dev/kvm
+          egrep -q '(vmx|svm)' /proc/cpuinfo
+
+      - name: Capture feed screenshots on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          FEED_APK_PATH: ${{ github.workspace }}/apk/app-debug.apk
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          cores: 2
+          ram-size: 2048M
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x1920
+          disable-animations: true
+          script: bash .github/scripts/capture-feed-screenshots-emulator.sh
+
+      - name: Upload feed screenshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: feed-ad-screenshots
+          path: screenshots/
+          if-no-files-found: error
