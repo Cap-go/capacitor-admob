@@ -21,12 +21,6 @@
         "gradle"
       ],
       "allowedVersions": "<1.19.0"
-    },
-    {
-      "matchManagers": [
-        "gradle-wrapper"
-      ],
-      "allowedVersions": "<9.6"
     }
   ]
 }
