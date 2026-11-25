@@ -2,6 +2,9 @@ import Foundation
 import UIKit
 import GoogleMobileAds
 import Capacitor
+#if canImport(WebViewNativeUIEngine)
+import WebViewNativeUIEngine
+#endif
 
 private let minAutoRefreshMs = 30_000
 
@@ -16,8 +19,15 @@ final class FeedAdManager {
     static let shared = FeedAdManager()
     private var entries: [Int: FeedAdEntry] = [:]
     private var nextId = 1
+    private var engineProjectionCount = 0
 
     private init() {}
+
+    var hasEngineProjections: Bool { engineProjectionCount > 0 }
+
+    static func shouldInstallEngineChannel(useEngine: Bool, channelInstalled: Bool) -> Bool {
+        FeedAdEngineInstallPolicy.shouldInstall(useEngine: useEngine, channelInstalled: channelInstalled)
+    }
 
     func create(
         format: String,
@@ -25,6 +35,7 @@ final class FeedAdManager {
         positionKey: String?,
         autoRefreshMs: Int?,
         nativeStyle: [String: String]?,
+        useWebViewNativeUiEngine: Bool,
         plugin: AdmobPlusPlugin
     ) -> Int {
         let id = nextId
@@ -35,6 +46,7 @@ final class FeedAdManager {
             adUnitId: adUnitId,
             positionKey: positionKey,
             nativeStyle: nativeStyle ?? [:],
+            useWebViewNativeUiEngine: useWebViewNativeUiEngine,
             plugin: plugin
         )
         if let ms = autoRefreshMs {
@@ -47,6 +59,17 @@ final class FeedAdManager {
     func destroy(id: Int) {
         entries[id]?.destroy()
         entries.removeValue(forKey: id)
+    }
+
+    func destroyAll() {
+        entries.values.forEach { $0.destroy() }
+        entries.removeAll()
+    }
+
+    func destroyEntries(ownedBy plugin: AdmobPlusPlugin) {
+        let ownerId = ObjectIdentifier(plugin)
+        let ids = entries.compactMap { $0.value.ownerId == ownerId ? $0.key : nil }
+        ids.forEach { destroy(id: $0) }
     }
 
     func load(id: Int, completion: @escaping (Error?) -> Void) {
@@ -68,6 +91,35 @@ final class FeedAdManager {
     func setAutoRefresh(id: Int, autoRefreshMs: Int?) {
         entries[id]?.setAutoRefresh(ms: autoRefreshMs)
     }
+
+    func bindProjection(id: Int, projectionSelector: String) throws {
+        guard let entry = entries[id] else {
+            throw AdMobError.adNotFound
+        }
+        #if canImport(WebViewNativeUIEngine)
+        if try entry.bindProjection(projectionSelector: projectionSelector) {
+            engineProjectionCount += 1
+        }
+        #else
+        _ = try entry.bindProjection(projectionSelector: projectionSelector)
+        #endif
+    }
+
+    func receiveEngineEvent(eventName: String, data: [String: Any]?) {
+        #if canImport(WebViewNativeUIEngine)
+        guard hasEngineProjections else { return }
+        guard let feedAdId = data?["feedAdId"] as? Int, let entry = entries[feedAdId], entry.useWebViewNativeUiEngine else {
+            return
+        }
+        entry.engineProjection?.receive(eventName, data: data)
+        #endif
+    }
+
+    #if canImport(WebViewNativeUIEngine)
+    fileprivate func engineProjectionReleased() {
+        engineProjectionCount = max(0, engineProjectionCount - 1)
+    }
+    #endif
 }
 
 private enum FeedAdFormat {
@@ -81,7 +133,14 @@ private final class FeedAdEntry: NSObject {
     let adUnitId: String
     let positionKey: String?
     let nativeStyle: [String: String]
+    let useWebViewNativeUiEngine: Bool
+    let ownerId: ObjectIdentifier
     weak var plugin: AdmobPlusPlugin?
+
+    #if canImport(WebViewNativeUIEngine)
+    fileprivate var engineProjection: NativeUIProjection?
+    private var boundProjectionSelector: String?
+    #endif
 
     private var overlayContainer: UIView?
     private var nativeAdView: NativeAdView?
@@ -99,6 +158,7 @@ private final class FeedAdEntry: NSObject {
         adUnitId: String,
         positionKey: String?,
         nativeStyle: [String: String],
+        useWebViewNativeUiEngine: Bool,
         plugin: AdmobPlusPlugin
     ) {
         self.id = id
@@ -106,6 +166,8 @@ private final class FeedAdEntry: NSObject {
         self.adUnitId = adUnitId
         self.positionKey = positionKey
         self.nativeStyle = nativeStyle
+        self.useWebViewNativeUiEngine = useWebViewNativeUiEngine
+        self.ownerId = ObjectIdentifier(plugin)
         self.plugin = plugin
         super.init()
     }
@@ -131,6 +193,9 @@ private final class FeedAdEntry: NSObject {
     }
 
     func destroy() {
+        #if canImport(WebViewNativeUIEngine)
+        releaseEngineProjection()
+        #endif
         refreshTimer?.invalidate()
         refreshTimer = nil
         nativeAd = nil
@@ -154,6 +219,77 @@ private final class FeedAdEntry: NSObject {
         }
     }
 
+    #if canImport(WebViewNativeUIEngine)
+    private func releaseEngineProjection() {
+        if let engineProjection = engineProjection {
+            engineProjection.destroy()
+            self.engineProjection = nil
+            boundProjectionSelector = nil
+            FeedAdManager.shared.engineProjectionReleased()
+        }
+    }
+
+    @discardableResult
+    func bindProjection(projectionSelector: String) throws -> Bool {
+        guard useWebViewNativeUiEngine else {
+            throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
+        }
+        if let boundProjectionSelector, boundProjectionSelector == projectionSelector, engineProjection != nil {
+            return false
+        }
+        if engineProjection != nil {
+            releaseEngineProjection()
+        }
+        guard let plugin = plugin, let webView = plugin.bridge?.webView else {
+            throw AdMobError.unknown("WebView unavailable")
+        }
+        syncEngineHostAttached()
+        engineProjection = try NativeUIProjection(
+            webView: webView,
+            plugin: plugin.jsName,
+            projectionSelector: projectionSelector,
+            receiveListeners: .init(
+                update: [Events.feedLoad, Events.feedRefresh],
+                match: ["feedAdId": id]
+            ),
+            failedFallback: .native,
+            canCapture: { [weak self] in self?.loaded ?? false },
+            view: { [weak self] in self?.nativeAdView ?? self?.bannerView }
+        )
+        boundProjectionSelector = projectionSelector
+        return true
+    }
+    #else
+    @discardableResult
+    func bindProjection(projectionSelector: String) throws -> Bool {
+        if useWebViewNativeUiEngine {
+            throw AdMobError.unknown(
+                "WebViewNativeUIEngine is not linked. Add CapgoCapacitorAdmob/Engine and the WebViewNativeUIEngine path pod to your Podfile."
+            )
+        }
+        throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
+    }
+    #endif
+
+    private func syncOverlayVisibility() {
+        overlayContainer?.isHidden = !loaded
+    }
+
+    private func syncEngineHostAttached() {
+        guard useWebViewNativeUiEngine else { return }
+        DispatchQueue.main.async {
+            guard let webView = self.plugin?.bridge?.webView,
+                  let rootView = self.plugin?.bridge?.viewController?.view else { return }
+            let container = self.ensureOverlayContainer(on: rootView, below: webView)
+            let target = self.nativeAdView ?? self.bannerView
+            if let target, target.superview == nil {
+                container.addSubview(target)
+            }
+            container.frame = rootView.bounds
+            container.isHidden = !self.loaded
+        }
+    }
+
     func updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Bool) {
         DispatchQueue.main.async {
             guard let webView = self.plugin?.bridge?.webView,
@@ -166,8 +302,54 @@ private final class FeedAdEntry: NSObject {
             target?.frame = frame
             container.isHidden = !visible || !self.loaded
             container.frame = rootView.bounds
+            #if DEBUG
+            if self.useWebViewNativeUiEngine, let target = target {
+                self.dispatchNativeBoundsDiagnostic(
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height,
+                    visible: visible,
+                    nativeFrame: target.frame,
+                    nativeVisible: !container.isHidden
+                )
+            }
+            #endif
         }
     }
+
+    #if DEBUG
+    private func dispatchNativeBoundsDiagnostic(
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        visible: Bool,
+        nativeFrame: CGRect,
+        nativeVisible: Bool
+    ) {
+        guard let webView = plugin?.bridge?.webView else { return }
+        let payload: [String: Any] = [
+            "feedAdId": id,
+            "requestedX": x,
+            "requestedY": y,
+            "requestedWidth": width,
+            "requestedHeight": height,
+            "requestedVisible": visible,
+            "nativeLeftPt": nativeFrame.origin.x,
+            "nativeTopPt": nativeFrame.origin.y,
+            "nativeWidthPt": nativeFrame.width,
+            "nativeHeightPt": nativeFrame.height,
+            "nativeVisible": nativeVisible,
+        ]
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: payload),
+            let json = String(data: data, encoding: .utf8)
+        else { return }
+        let script = "window.dispatchEvent(new CustomEvent('capgo-feed-native-bounds',{detail:\(json)}));"
+        webView.evaluateJavaScript(script, completionHandler: nil)
+    }
+    #endif
 
     private var formatString: String {
         format == .banner ? "banner" : "native"
@@ -216,6 +398,7 @@ private final class FeedAdEntry: NSObject {
             }
         }
         loaded = false
+        syncOverlayVisibility()
         bannerView?.load(AdMobHelper.buildAdRequest())
     }
 
@@ -233,7 +416,8 @@ private final class FeedAdEntry: NSObject {
         container.addSubview(adView)
         nativeAdView = adView
         loaded = true
-        container.isHidden = false
+        syncOverlayVisibility()
+        syncEngineHostAttached()
 
         let assets: [String: Any] = [
             "headline": nativeAd.headline ?? "",
@@ -333,6 +517,7 @@ extension FeedAdEntry: AdLoaderDelegate {
     func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
         plugin?.notifyFeedFailure(Events.feedLoadFail, feedAdId: id, positionKey: positionKey, format: formatString, error: error)
         loaded = false
+        syncOverlayVisibility()
         finishLoad(error: error)
     }
 }
@@ -356,7 +541,8 @@ extension FeedAdEntry: NativeAdDelegate {
 extension FeedAdEntry: BannerViewDelegate {
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         loaded = true
-        overlayContainer?.isHidden = false
+        syncOverlayVisibility()
+        syncEngineHostAttached()
         let assets: [String: Any] = [
             "width": bannerView.adSize.size.width,
             "height": bannerView.adSize.size.height,
@@ -368,6 +554,7 @@ extension FeedAdEntry: BannerViewDelegate {
     func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         plugin?.notifyFeedFailure(Events.feedLoadFail, feedAdId: id, positionKey: positionKey, format: formatString, error: error)
         loaded = false
+        syncOverlayVisibility()
         finishLoad(error: error)
     }
 

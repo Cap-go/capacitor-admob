@@ -1,0 +1,7 @@
+appId: app.capgo.admob
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "(?s).*MAESTRO_BIND_REJECTED.*"
+    timeout: 120000
+- assertNotVisible: ".*MAESTRO_BIND_UNEXPECTED_OK.*"

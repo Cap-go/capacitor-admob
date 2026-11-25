@@ -201,8 +201,17 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
                 nativeStyle[key] = styleObj.optString(key)
             }
         }
+        val useWebViewNativeUiEngine = call.getBoolean("useWebViewNativeUiEngine", false) ?: false
         bridge.executeOnMainThread {
-            val id = feedAdManager!!.create(format, adUnitId, positionKey, autoRefreshMs, nativeStyle)
+            val id =
+                feedAdManager!!.create(
+                    format,
+                    adUnitId,
+                    positionKey,
+                    autoRefreshMs,
+                    nativeStyle,
+                    useWebViewNativeUiEngine,
+                )
             val ret = JSObject()
             ret.put("id", id)
             call.resolve(ret)
@@ -254,6 +263,28 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
     }
 
     @PluginMethod
+    fun feedAdBindProjection(call: PluginCall) {
+        val id = call.getInt("id")
+        val projectionSelector = call.getString("projectionSelector")
+        if (id == null) {
+            call.reject("id is required")
+            return
+        }
+        if (projectionSelector.isNullOrBlank()) {
+            call.reject("projectionSelector is required")
+            return
+        }
+        bridge.executeOnMainThread {
+            val error = feedAdManager!!.bindProjection(id, projectionSelector)
+            if (error != null) {
+                call.reject(error)
+            } else {
+                call.resolve()
+            }
+        }
+    }
+
+    @PluginMethod
     fun feedAdUpdateBounds(call: PluginCall) {
         val id = call.getInt("id")
         if (id == null) {
@@ -292,6 +323,22 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
 
     fun emit(eventName: String?, data: JSObject?) {
         notifyListeners(eventName, data)
+    }
+
+    override fun notifyListeners(eventName: String, data: JSObject, retainUntilConsumed: Boolean) {
+        if (feedAdManager?.hasEngineProjections() == true) {
+            feedAdManager?.receiveEngineEvent(eventName, data)
+        }
+        super.notifyListeners(eventName, data, retainUntilConsumed)
+    }
+
+    internal fun releaseFeedEngineProjection() {
+        feedAdManager?.releaseEngineProjection()
+    }
+
+    override fun handleOnDestroy() {
+        feedAdManager?.destroyAll()
+        super.handleOnDestroy()
     }
 
     override val activity: Activity

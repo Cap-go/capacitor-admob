@@ -33,17 +33,38 @@ import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoader
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoaderCallback
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdRequest
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
+import io.github.webview_native_ui.engine.NativeUIProjection
 import kotlin.math.max
+import org.json.JSONObject
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
 private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
+
+private fun isAppDebuggable(plugin: AdMobPlusPlugin): Boolean =
+    (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 private const val MAX_NATIVE_NO_FILL_RETRIES = 0
 private const val NATIVE_NO_FILL_RETRY_DELAY_MS = 2_000L
 
+internal fun shouldInstallEngineChannelForTest(useWebViewNativeUiEngine: Boolean, engineChannelInstalled: Boolean): Boolean =
+    useWebViewNativeUiEngine && !engineChannelInstalled
+
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
+    companion object {
+        fun shouldInstallEngineChannel(useWebViewNativeUiEngine: Boolean, engineChannelInstalled: Boolean): Boolean =
+            shouldInstallEngineChannelForTest(useWebViewNativeUiEngine, engineChannelInstalled)
+    }
     private val entries = mutableMapOf<Int, FeedAdEntry>()
     private var nextId = 1
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var engineProjectionCount = 0
+    private var engineChannelInstalled = false
+
+    fun hasEngineProjections(): Boolean = engineProjectionCount > 0
+
+    fun isEngineChannelInstalled(): Boolean = engineChannelInstalled
+
+    internal fun shouldInstallEngineChannel(useWebViewNativeUiEngine: Boolean): Boolean =
+        shouldInstallEngineChannelForTest(useWebViewNativeUiEngine, engineChannelInstalled)
 
     fun create(
         format: String,
@@ -51,6 +72,7 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
         positionKey: String?,
         autoRefreshMs: Int?,
         nativeStyle: Map<String, String>,
+        useWebViewNativeUiEngine: Boolean,
     ): Int {
         val id = nextId++
         val entry = FeedAdEntry(
@@ -59,16 +81,35 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
             adUnitId = adUnitId,
             positionKey = positionKey,
             nativeStyle = nativeStyle,
+            useWebViewNativeUiEngine = useWebViewNativeUiEngine,
             plugin = plugin,
             mainHandler = mainHandler,
         )
         autoRefreshMs?.let { entry.setAutoRefresh(it) }
+        if (shouldInstallEngineChannel(useWebViewNativeUiEngine)) {
+            installEngineChannelIfNeeded()
+        }
         entries[id] = entry
         return id
     }
 
     fun destroy(id: Int) {
         entries.remove(id)?.destroy()
+    }
+
+    fun destroyAll() {
+        entries.values.toList().forEach { it.destroy() }
+        entries.clear()
+    }
+
+    private fun installEngineChannelIfNeeded() {
+        if (engineChannelInstalled) {
+            return
+        }
+        runCatching {
+            NativeUIProjection.install(plugin.bridge.webView)
+            engineChannelInstalled = true
+        }
     }
 
     fun load(id: Int, onComplete: (String?) -> Unit) {
@@ -96,6 +137,39 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     fun setAutoRefresh(id: Int, autoRefreshMs: Int?) {
         entries[id]?.setAutoRefresh(autoRefreshMs)
     }
+
+    fun bindProjection(id: Int, projectionSelector: String): String? {
+        val entry = entries[id] ?: return "Feed ad not found"
+        if (!entry.useWebViewNativeUiEngine) {
+            return "useWebViewNativeUiEngine is disabled for this feed ad"
+        }
+        val previousProjection = entry.engineProjection
+        if (shouldInstallEngineChannel(entry.useWebViewNativeUiEngine)) {
+            installEngineChannelIfNeeded()
+        }
+        entry.ensureAdHostInHierarchy()
+        val error = entry.bindProjection(projectionSelector)
+        if (error == null && entry.engineProjection !== previousProjection) {
+            engineProjectionCount += 1
+        }
+        return error
+    }
+
+    fun receiveEngineEvent(eventName: String, data: JSObject) {
+        if (!hasEngineProjections()) {
+            return
+        }
+        val feedAdId = data.optInt("feedAdId", -1)
+        val entry = entries[feedAdId] ?: return
+        if (!entry.useWebViewNativeUiEngine) {
+            return
+        }
+        entry.engineProjection?.receive(eventName, data)
+    }
+
+    fun releaseEngineProjection() {
+        engineProjectionCount = max(0, engineProjectionCount - 1)
+    }
 }
 
 private enum class FeedAdFormat {
@@ -109,9 +183,15 @@ private class FeedAdEntry(
     val adUnitId: String,
     val positionKey: String?,
     val nativeStyle: Map<String, String>,
+    val useWebViewNativeUiEngine: Boolean,
     private val plugin: AdMobPlusPlugin,
     private val mainHandler: Handler,
 ) {
+    var engineProjection: NativeUIProjection? = null
+        private set
+
+    private var boundProjectionSelector: String? = null
+
     private var adHost: View? = null
     private var nativeAd: NativeAd? = null
     private var bannerAdView: AdView? = null
@@ -123,11 +203,24 @@ private class FeedAdEntry(
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
     private val ciBannerSnapshotToken = Any()
+    private var destroyed = false
 
     val isLoaded: Boolean
         get() = loaded
 
+    private fun releaseEngineProjection() {
+        if (engineProjection != null) {
+            engineProjection?.close()
+            engineProjection = null
+            boundProjectionSelector = null
+            plugin.releaseFeedEngineProjection()
+        }
+    }
+
     fun destroy() {
+        destroyed = true
+        finishLoad("Feed ad destroyed")
+        releaseEngineProjection()
         mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
@@ -169,6 +262,51 @@ private class FeedAdEntry(
         }
     }
 
+    fun ensureAdHostInHierarchy() {
+        if (!useWebViewNativeUiEngine) {
+            return
+        }
+        mainHandler.post {
+            val webView = plugin.bridge.webView
+            val host = adHost ?: return@post
+            val parent = webView.parent as? ViewGroup ?: return@post
+            if (host.parent == null) {
+                parent.addView(host)
+                host.visibility = if (loaded) View.VISIBLE else View.INVISIBLE
+            }
+            host.bringToFront()
+        }
+    }
+
+    fun bindProjection(projectionSelector: String): String? {
+        if (engineProjection != null) {
+            if (boundProjectionSelector == projectionSelector) {
+                return null
+            }
+            releaseEngineProjection()
+        }
+        ensureAdHostInHierarchy()
+        return runCatching {
+            engineProjection =
+                NativeUIProjection(
+                    window = plugin.activity.window,
+                    webView = plugin.bridge.webView,
+                    plugin = plugin.pluginHandle.id,
+                    projectionSelector = projectionSelector,
+                    receiveListeners =
+                        NativeUIProjection.ReceiveListeners(
+                            update = listOf(Generated.Events.FEED_LOAD, Generated.Events.FEED_REFRESH),
+                            match = mapOf("feedAdId" to id),
+                        ),
+                    failedFallback = NativeUIProjection.FailedFallback.NATIVE,
+                    canCapture = { loaded },
+                    view = { adHost },
+                )
+            boundProjectionSelector = projectionSelector
+            null
+        }.getOrElse { it.message ?: it.toString() }
+    }
+
     fun updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Boolean) {
         mainHandler.post {
             val webView = plugin.bridge.webView
@@ -187,7 +325,9 @@ private class FeedAdEntry(
                 topMargin = top
             }
             host.layoutParams = params
-            host.visibility = if (visible && loaded) View.VISIBLE else View.INVISIBLE
+            if (!useWebViewNativeUiEngine || engineProjection == null) {
+                host.visibility = if (visible && loaded) View.VISIBLE else View.INVISIBLE
+            }
             host.bringToFront()
             if (visible && loaded && !overlayVisibleLogged && w > 40 && h > 20) {
                 overlayVisibleLogged = true
@@ -207,7 +347,51 @@ private class FeedAdEntry(
             ) {
                 writeCiBannerOverlaySnapshotNow(host, w, h)
             }
+            if (useWebViewNativeUiEngine && isAppDebuggable(plugin)) {
+                dispatchNativeBoundsDiagnostic(
+                    x = x,
+                    y = y,
+                    width = width,
+                    height = height,
+                    visible = visible,
+                    nativeLeftPx = left,
+                    nativeTopPx = top,
+                    nativeWidthPx = w,
+                    nativeHeightPx = h,
+                    nativeVisible = host.visibility == View.VISIBLE,
+                )
+            }
         }
+    }
+
+    private fun dispatchNativeBoundsDiagnostic(
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        visible: Boolean,
+        nativeLeftPx: Int,
+        nativeTopPx: Int,
+        nativeWidthPx: Int,
+        nativeHeightPx: Int,
+        nativeVisible: Boolean,
+    ) {
+        val detail =
+            JSONObject()
+                .put("feedAdId", id)
+                .put("requestedX", x)
+                .put("requestedY", y)
+                .put("requestedWidth", width)
+                .put("requestedHeight", height)
+                .put("requestedVisible", visible)
+                .put("nativeLeftPx", nativeLeftPx)
+                .put("nativeTopPx", nativeTopPx)
+                .put("nativeWidthPx", nativeWidthPx)
+                .put("nativeHeightPx", nativeHeightPx)
+                .put("nativeVisible", nativeVisible)
+        val script =
+            "window.dispatchEvent(new CustomEvent('capgo-feed-native-bounds',{detail:$detail}));"
+        plugin.bridge.webView.evaluateJavascript(script, null)
     }
 
     private fun scheduleCiBannerOverlaySnapshotAfterLoad() {
@@ -306,11 +490,18 @@ private class FeedAdEntry(
             object : NativeAdLoaderCallback {
                 override fun onNativeAdLoaded(ad: NativeAd) {
                     mainHandler.post {
+                        if (destroyed) {
+                            ad.destroy()
+                            return@post
+                        }
                         displayNativeAd(ad)
                     }
                 }
 
                 override fun onAdFailedToLoad(adError: LoadAdError) {
+                    if (destroyed) {
+                        return
+                    }
                     Log.i(
                         FEED_SCREENSHOT_LOG_TAG,
                         "feed_load_fail id=$id format=native code=${adError.code.value} message=${adError.message}",
@@ -332,6 +523,11 @@ private class FeedAdEntry(
     }
 
     private fun displayNativeAd(ad: NativeAd) {
+        if (destroyed) {
+            ad.destroy()
+            return
+        }
+        ensureAdHostInHierarchy()
         val oldHost = adHost
         val oldParent = oldHost?.parent as? ViewGroup
         oldParent?.removeView(oldHost)
@@ -343,6 +539,7 @@ private class FeedAdEntry(
         oldParent?.addView(nativeAdView)
         loaded = true
         nativeAdView.visibility = View.VISIBLE
+        ensureAdHostInHierarchy()
 
         val assets = JSObject()
         assets.put("headline", ad.headline ?: "")
@@ -440,7 +637,11 @@ private class FeedAdEntry(
             com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest.Builder(adUnitId, adSize).build(),
             object : AdLoadCallback<BannerAd> {
                 override fun onAdLoaded(bannerAd: BannerAd) {
+                    if (destroyed) {
+                        return
+                    }
                     loaded = true
+                    ensureAdHostInHierarchy()
                     bannerAd.adEventCallback = object : BannerAdEventCallback {
                         override fun onAdClicked() {
                             emitFeed(Generated.Events.FEED_CLICK, null)

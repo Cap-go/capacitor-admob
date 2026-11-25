@@ -10,10 +10,20 @@ Pod::Spec.new do |s|
   s.homepage = package['repository']['url']
   s.author = package['author']
   s.source = { :git => package['repository']['url'], :tag => s.version.to_s }
-  s.source_files = 'ios/Sources/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.ios.deployment_target = '15.0'
-  s.dependency 'Capacitor'
-  s.dependency 'Google-Mobile-Ads-SDK', '~> 13.1'
-  s.dependency 'GoogleUserMessagingPlatform', '~> 3.1'
   s.swift_version = '5.1'
+  s.default_subspec = 'Core'
+
+  s.subspec 'Core' do |core|
+    core.source_files = 'ios/Sources/**/*.{swift,h,m,c,cc,mm,cpp}'
+    core.dependency 'Capacitor'
+    core.dependency 'Google-Mobile-Ads-SDK', '~> 13.1'
+    core.dependency 'GoogleUserMessagingPlatform', '~> 3.1'
+  end
+
+  s.subspec 'Engine' do |engine|
+    engine.dependency 'CapgoCapacitorAdmob/Core'
+    engine.dependency 'WebViewNativeUIEngine', '1.0.11'
+  end
+
 end

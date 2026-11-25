@@ -12,6 +12,12 @@ const feedList = document.getElementById('feedList');
 const feedAds = [];
 const attachedFeedSlotKeys = new Set();
 let feedAttachInProgress = false;
+/** @type {{ detail: Record<string, unknown> } | null} */
+let lastNativeOverlayBounds = null;
+
+window.addEventListener('capgo-feed-native-bounds', (event) => {
+  lastNativeOverlayBounds = event;
+});
 
 const logFeed = (message, details) => {
   const stamp = new Date().toISOString().split('T')[1].replace('Z', '');
@@ -34,6 +40,9 @@ const samplePosts = [
 ];
 
 const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
+const ciFeedManual = import.meta.env.VITE_CI_FEED_MANUAL === '1';
+const feedNativeUiEngine = import.meta.env.VITE_FEED_ENGINE === '1';
+const maestroBindReject = import.meta.env.VITE_MAESTRO_BIND_REJECT === '1';
 
 if (ciFeedDemo) {
   const focusFeedSectionOnly = () => {
@@ -54,7 +63,7 @@ if (ciFeedDemo) {
 const buildFeed = () => {
   feedList.innerHTML = '';
   let adIndex = 0;
-  const posts = ciFeedDemo ? samplePosts.slice(0, 1) : samplePosts;
+  const posts = ciFeedDemo && !feedNativeUiEngine ? samplePosts.slice(0, 1) : samplePosts;
 
   posts.forEach((post, index) => {
     const card = document.createElement('article');
@@ -98,6 +107,7 @@ const attachSlot = async (slot) => {
     adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
     positionKey,
     autoRefreshMs: ciFeedDemo ? undefined : 60000,
+    useWebViewNativeUiEngine: feedNativeUiEngine,
     nativeStyle: {
       backgroundColor: '#1c1c1c',
       headlineTextColor: '#ffffff',
@@ -113,7 +123,19 @@ const attachSlot = async (slot) => {
     attachedFeedSlotKeys.add(positionKey);
     const minHeight = isBanner ? 60 : 280;
     placeholder.style.minHeight = `${minHeight}px`;
-    logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
+    logFeed(`Attached ${positionKey}`, {
+      format: isBanner ? 'banner' : 'native',
+      useWebViewNativeUiEngine: feedNativeUiEngine,
+    });
+    if (ciFeedDemo && feedNativeUiEngine) {
+      console.info('CAPGO_CI_FEED_ENGINE_ENABLED');
+      logFeed('CAPGO_CI_FEED_ENGINE_ENABLED');
+      scheduleScrollPlacementCheck();
+    }
+    if (ciFeedDemo && !feedNativeUiEngine) {
+      console.info('CAPGO_CI_FEED_LEGACY_BOUNDS');
+      logFeed('CAPGO_CI_FEED_LEGACY_BOUNDS');
+    }
     return true;
   } catch (error) {
     await feedAd.destroy().catch(() => undefined);
@@ -214,8 +236,75 @@ const scrollFeedSectionIntoView = () => {
   document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'auto' });
 };
 
+let scrollPlacementCheckScheduled = false;
+
+const scheduleScrollPlacementCheck = () => {
+  if (!ciFeedDemo || !feedNativeUiEngine || scrollPlacementCheckScheduled) {
+    return;
+  }
+  scrollPlacementCheckScheduled = true;
+  window.setTimeout(() => {
+    const before = feedList.scrollTop;
+    feedList.scrollTop = before + 400;
+    if (feedList.scrollTop <= before) {
+      feedList.scrollTop = feedList.scrollHeight;
+    }
+    window.setTimeout(() => {
+      const slot = feedList.querySelector('.feed-ad-slot');
+      const rect = slot?.getBoundingClientRect();
+      const inView = rect ? rect.top > 0 && rect.bottom < window.innerHeight : false;
+      const native = lastNativeOverlayBounds?.detail;
+      const nativeSynced =
+        !!native &&
+        native.nativeVisible === true &&
+        Number(native.nativeWidthPx ?? native.nativeWidthPt ?? 0) > 40 &&
+        Number(native.nativeHeightPx ?? native.nativeHeightPt ?? 0) > 20 &&
+        !!rect &&
+        Math.abs(Number(native.requestedY) - rect.top) < 16 &&
+        Math.abs(Number(native.requestedX) - rect.left) < 16;
+      logFeed('CAPGO_FEED_SCROLL_CHECK', {
+        scrollTop: feedList.scrollTop,
+        slotTop: rect?.top ?? null,
+        slotHeight: rect?.height ?? null,
+        slotInView: inView,
+        nativeOverlay: native ?? null,
+        nativeSynced,
+      });
+    }, 800);
+  }, 500);
+};
+
+if (maestroBindReject && Capacitor.isNativePlatform()) {
+  void (async () => {
+    await AdMob.start();
+    try {
+      const { id } = await AdMob.feedAdCreate({
+        format: 'banner',
+        adUnitId: BANNER_TEST_UNIT,
+        useWebViewNativeUiEngine: false,
+      });
+      try {
+        await AdMob.feedAdBindProjection({ id, projectionSelector: '#maestro-bind-reject-slot' });
+        logFeed('MAESTRO_BIND_UNEXPECTED_OK');
+      } catch (bindError) {
+        const message = String(bindError);
+        if (/disabled|useWebViewNativeUiEngine/i.test(message)) {
+          logFeed('MAESTRO_BIND_REJECTED', { message });
+        } else {
+          logFeed('MAESTRO_BIND_UNEXPECTED_ERROR', { message });
+        }
+      }
+    } catch (createError) {
+      logFeed('MAESTRO_CREATE_FAILED', { message: String(createError) });
+    }
+  })();
+}
+
 if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
+}
+
+if (ciFeedDemo && !ciFeedManual && Capacitor.isNativePlatform()) {
   window.setTimeout(async () => {
     scrollFeedSectionIntoView();
     await new Promise((resolve) => window.setTimeout(resolve, 800));

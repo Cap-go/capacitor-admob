@@ -1,0 +1,9 @@
+appId: app.capgo.admob
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "(?s).*useWebViewNativeUiEngine.*true.*"
+    timeout: 120000
+- extendedWaitUntil:
+    visible: ".*feed\\.load( |$).*"
+    timeout: 120000

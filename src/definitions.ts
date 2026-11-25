@@ -247,6 +247,17 @@ export type FeedAdCreateOptions = {
    * Omit or pass `null` to disable auto-refresh.
    */
   autoRefreshMs?: number | null;
+  /**
+   * When `true`, native in-feed placement uses `@webview-native-ui/engine` scroll
+   * tracking and DOM projection. Native views still receive slot geometry via
+   * `feedAdUpdateBounds` from `FeedAd.attachTo()` (initial layout and scroll updates).
+   * Requires `FeedAd.attachTo()` on native platforms. CocoaPods: see README
+   * WebView Native UI Engine (`Core` default; `Engine` subspec + path pods).
+   *
+   * @default false
+   * @since 8.3.0
+   */
+  useWebViewNativeUiEngine?: boolean;
   /** Template colors when `format` is `native`. */
   nativeStyle?: FeedNativeAdStyle;
 };
@@ -521,6 +532,15 @@ export interface AdMobPlusPlugin {
    * @since 8.3.0
    */
   feedAdUpdateBounds(opts: FeedAdBounds & { id: number }): Promise<void>;
+
+  /**
+   * Bind a feed ad created with `useWebViewNativeUiEngine: true` to a DOM slot selector.
+   * Called by `FeedAd.attachTo()`; apps rarely call this directly.
+   *
+   * @param opts - Feed ad id and CSS selector for the placeholder element
+   * @since 8.3.0
+   */
+  feedAdBindProjection(opts: { id: number; projectionSelector: string }): Promise<void>;
 
   /**
    * Enable or disable auto-refresh (minimum 30 seconds).

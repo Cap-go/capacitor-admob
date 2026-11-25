@@ -1,0 +1,13 @@
+appId: app.capgo.admob
+---
+- launchApp
+- extendedWaitUntil:
+    visible: ".*CAPGO_CI_FEED_ENGINE_ENABLED.*"
+    timeout: 120000
+- extendedWaitUntil:
+    visible: ".*feed\\.load( |$).*"
+    timeout: 120000
+- extendedWaitUntil:
+    visible: ".*CAPGO_FEED_SCROLL_CHECK.*"
+    timeout: 120000
+- assertVisible: "(?s).*CAPGO_FEED_SCROLL_CHECK.*\"slotInView\":\\s*true.*\"nativeSynced\":\\s*true.*"

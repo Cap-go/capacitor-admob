@@ -25,6 +25,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "feedAdLoad", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "feedAdIsLoaded", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "feedAdUpdateBounds", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "feedAdBindProjection", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "feedAdSetAutoRefresh", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "trackingAuthorizationStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestTrackingAuthorization", returnType: CAPPluginReturnPromise),
@@ -253,6 +254,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
+        let useWebViewNativeUiEngine = call.getBool("useWebViewNativeUiEngine") ?? false
         DispatchQueue.main.async {
             let id = FeedAdManager.shared.create(
                 format: format,
@@ -260,6 +262,7 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
                 positionKey: positionKey,
                 autoRefreshMs: autoRefreshMs,
                 nativeStyle: nativeStyle,
+                useWebViewNativeUiEngine: useWebViewNativeUiEngine,
                 plugin: self
             )
             call.resolve(["id": id])
@@ -313,6 +316,33 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
+    @objc func feedAdBindProjection(_ call: CAPPluginCall) {
+        guard let id = call.getInt("id") else {
+            call.reject("id is required")
+            return
+        }
+        guard let projectionSelector = call.getString("projectionSelector"), !projectionSelector.isEmpty else {
+            call.reject("projectionSelector is required")
+            return
+        }
+        DispatchQueue.main.async {
+            do {
+                try FeedAdManager.shared.bindProjection(id: id, projectionSelector: projectionSelector)
+                call.resolve()
+            } catch {
+                let message = (error as? AdMobError)?.localizedDescription ?? error.localizedDescription
+                call.reject("Failed to bind feed ad projection: \(message)")
+            }
+        }
+    }
+
+  public override func notifyListeners(_ eventName: String, data: [String: Any]?, retainUntilConsumed: Bool) {
+        if FeedAdManager.shared.hasEngineProjections {
+            FeedAdManager.shared.receiveEngineEvent(eventName: eventName, data: data)
+        }
+        super.notifyListeners(eventName, data: data, retainUntilConsumed: retainUntilConsumed)
+    }
+
     @objc func feedAdSetAutoRefresh(_ call: CAPPluginCall) {
         guard let id = call.getInt("id") else {
             call.reject("id is required")
@@ -358,5 +388,14 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func getPluginVersion(_ call: CAPPluginCall) {
         call.resolve(["version": self.pluginVersion])
+    }
+
+    deinit {
+        let cleanup = { FeedAdManager.shared.destroyEntries(ownedBy: self) }
+        if Thread.isMainThread {
+            cleanup()
+        } else {
+            DispatchQueue.main.sync(execute: cleanup)
+        }
     }
 }
