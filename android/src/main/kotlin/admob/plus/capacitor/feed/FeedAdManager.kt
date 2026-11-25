@@ -39,6 +39,9 @@ import org.json.JSONObject
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
 private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
+
+private fun isAppDebuggable(plugin: AdMobPlusPlugin): Boolean =
+    (plugin.context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 private const val MAX_NATIVE_NO_FILL_RETRIES = 0
 private const val NATIVE_NO_FILL_RETRY_DELAY_MS = 2_000L
 
@@ -344,7 +347,7 @@ private class FeedAdEntry(
             ) {
                 writeCiBannerOverlaySnapshotNow(host, w, h)
             }
-            if (useWebViewNativeUiEngine) {
+            if (useWebViewNativeUiEngine && isAppDebuggable(plugin)) {
                 dispatchNativeBoundsDiagnostic(
                     x = x,
                     y = y,

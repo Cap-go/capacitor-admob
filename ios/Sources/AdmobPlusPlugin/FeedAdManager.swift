@@ -302,6 +302,7 @@ private final class FeedAdEntry: NSObject {
             target?.frame = frame
             container.isHidden = !visible || !self.loaded
             container.frame = rootView.bounds
+            #if DEBUG
             if self.useWebViewNativeUiEngine, let target = target {
                 self.dispatchNativeBoundsDiagnostic(
                     x: x,
@@ -313,9 +314,11 @@ private final class FeedAdEntry: NSObject {
                     nativeVisible: !container.isHidden
                 )
             }
+            #endif
         }
     }
 
+    #if DEBUG
     private func dispatchNativeBoundsDiagnostic(
         x: Double,
         y: Double,
@@ -346,6 +349,7 @@ private final class FeedAdEntry: NSObject {
         let script = "window.dispatchEvent(new CustomEvent('capgo-feed-native-bounds',{detail:\(json)}));"
         webView.evaluateJavaScript(script, completionHandler: nil)
     }
+    #endif
 
     private var formatString: String {
         format == .banner ? "banner" : "native"
