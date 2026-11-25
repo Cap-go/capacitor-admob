@@ -121,9 +121,11 @@ const attachSlot = async (slot) => {
     });
     if (ciFeedDemo && feedNativeUiEngine) {
       console.info('CAPGO_CI_FEED_ENGINE_ENABLED');
+      logFeed('CAPGO_CI_FEED_ENGINE_ENABLED');
     }
     if (ciFeedDemo && !feedNativeUiEngine) {
       console.info('CAPGO_CI_FEED_LEGACY_BOUNDS');
+      logFeed('CAPGO_CI_FEED_LEGACY_BOUNDS');
     }
     return true;
   } catch (error) {

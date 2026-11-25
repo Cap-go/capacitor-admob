@@ -13,6 +13,7 @@ VITE_CI_FEED=1 bun run build
 bunx cap sync android
 maestro test .maestro/feed-legacy-bounds.yaml
 maestro test .maestro/feed-legacy-no-start.yaml
+maestro test .maestro/feed-engine-legacy-marker.yaml
 ```
 
 WebView Native UI Engine:

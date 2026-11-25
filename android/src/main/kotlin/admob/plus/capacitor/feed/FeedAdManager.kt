@@ -185,6 +185,7 @@ private class FeedAdEntry(
     private var overlayVisibleLogged = false
     private var ciBannerSnapshotWritten = false
     private val ciBannerSnapshotToken = Any()
+    private var destroyed = false
 
     val isLoaded: Boolean
         get() = loaded
@@ -199,6 +200,7 @@ private class FeedAdEntry(
     }
 
     fun destroy() {
+        destroyed = true
         releaseEngineProjection()
         mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
@@ -425,11 +427,18 @@ private class FeedAdEntry(
             object : NativeAdLoaderCallback {
                 override fun onNativeAdLoaded(ad: NativeAd) {
                     mainHandler.post {
+                        if (destroyed) {
+                            ad.destroy()
+                            return@post
+                        }
                         displayNativeAd(ad)
                     }
                 }
 
                 override fun onAdFailedToLoad(adError: LoadAdError) {
+                    if (destroyed) {
+                        return
+                    }
                     Log.i(
                         FEED_SCREENSHOT_LOG_TAG,
                         "feed_load_fail id=$id format=native code=${adError.code.value} message=${adError.message}",
@@ -451,6 +460,10 @@ private class FeedAdEntry(
     }
 
     private fun displayNativeAd(ad: NativeAd) {
+        if (destroyed) {
+            ad.destroy()
+            return
+        }
         val oldHost = adHost
         val oldParent = oldHost?.parent as? ViewGroup
         oldParent?.removeView(oldHost)
@@ -560,6 +573,9 @@ private class FeedAdEntry(
             com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest.Builder(adUnitId, adSize).build(),
             object : AdLoadCallback<BannerAd> {
                 override fun onAdLoaded(bannerAd: BannerAd) {
+                    if (destroyed) {
+                        return
+                    }
                     loaded = true
                     ensureAdHostInHierarchy()
                     bannerAd.adEventCallback = object : BannerAdEventCallback {
