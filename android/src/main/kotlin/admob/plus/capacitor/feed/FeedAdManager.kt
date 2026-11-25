@@ -321,7 +321,9 @@ private class FeedAdEntry(
                 topMargin = top
             }
             host.layoutParams = params
-            host.visibility = if (visible && loaded) View.VISIBLE else View.INVISIBLE
+            if (!useWebViewNativeUiEngine || engineProjection == null) {
+                host.visibility = if (visible && loaded) View.VISIBLE else View.INVISIBLE
+            }
             host.bringToFront()
             if (visible && loaded && !overlayVisibleLogged && w > 40 && h > 20) {
                 overlayVisibleLogged = true

@@ -56,7 +56,7 @@ pod 'CapgoCapacitorAdmob/Engine', :path => '../../node_modules/@capgo/capacitor-
 pod 'WebViewNativeUIEngine', :path => '../../node_modules/@webview-native-ui/engine'
 ```
 
-Install `@webview-native-ui/engine@1.0.11` from npm. Place both pods in the app target in `Podfile` (outside `capacitor_pods`).
+Install `@webview-native-ui/engine@1.0.11` from npm. Place both pods in the app target in `Podfile` (outside `capacitor_pods`). Adjust `../../node_modules` if your iOS app layout differs from the default Capacitor `ios/App` tree.
 
 Swift Package Manager always resolves `@webview-native-ui/engine` at `1.0.11` through `Package.swift`, even when `useWebViewNativeUiEngine` is `false`; runtime projection remains opt-in via the flag. CocoaPods `Core` installs do not link the engine until you add the `Engine` subspec.
 

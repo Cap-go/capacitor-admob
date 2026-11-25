@@ -67,7 +67,8 @@ final class FeedAdManager {
     }
 
     func destroyEntries(ownedBy plugin: AdmobPlusPlugin) {
-        let ids = entries.compactMap { $0.value.plugin === plugin ? $0.key : nil }
+        let ownerId = ObjectIdentifier(plugin)
+        let ids = entries.compactMap { $0.value.ownerId == ownerId ? $0.key : nil }
         ids.forEach { destroy(id: $0) }
     }
 
@@ -133,6 +134,7 @@ private final class FeedAdEntry: NSObject {
     let positionKey: String?
     let nativeStyle: [String: String]
     let useWebViewNativeUiEngine: Bool
+    let ownerId: ObjectIdentifier
     weak var plugin: AdmobPlusPlugin?
 
     #if canImport(WebViewNativeUIEngine)
@@ -165,6 +167,7 @@ private final class FeedAdEntry: NSObject {
         self.positionKey = positionKey
         self.nativeStyle = nativeStyle
         self.useWebViewNativeUiEngine = useWebViewNativeUiEngine
+        self.ownerId = ObjectIdentifier(plugin)
         self.plugin = plugin
         super.init()
     }

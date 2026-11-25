@@ -57,7 +57,7 @@ if (ciFeedDemo) {
 const buildFeed = () => {
   feedList.innerHTML = '';
   let adIndex = 0;
-  const posts = ciFeedDemo ? samplePosts.slice(0, 1) : samplePosts;
+  const posts = ciFeedDemo && !feedNativeUiEngine ? samplePosts.slice(0, 1) : samplePosts;
 
   posts.forEach((post, index) => {
     const card = document.createElement('article');
@@ -124,6 +124,7 @@ const attachSlot = async (slot) => {
     if (ciFeedDemo && feedNativeUiEngine) {
       console.info('CAPGO_CI_FEED_ENGINE_ENABLED');
       logFeed('CAPGO_CI_FEED_ENGINE_ENABLED');
+      scheduleScrollPlacementCheck();
     }
     if (ciFeedDemo && !feedNativeUiEngine) {
       console.info('CAPGO_CI_FEED_LEGACY_BOUNDS');
@@ -229,6 +230,33 @@ const scrollFeedSectionIntoView = () => {
   document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'auto' });
 };
 
+let scrollPlacementCheckScheduled = false;
+
+const scheduleScrollPlacementCheck = () => {
+  if (!ciFeedDemo || !feedNativeUiEngine || scrollPlacementCheckScheduled) {
+    return;
+  }
+  scrollPlacementCheckScheduled = true;
+  window.setTimeout(() => {
+    const before = feedList.scrollTop;
+    feedList.scrollTop = before + 400;
+    if (feedList.scrollTop <= before) {
+      feedList.scrollTop = feedList.scrollHeight;
+    }
+    window.setTimeout(() => {
+      const slot = feedList.querySelector('.feed-ad-slot');
+      const rect = slot?.getBoundingClientRect();
+      const inView = rect ? rect.top > 0 && rect.bottom < window.innerHeight : false;
+      logFeed('CAPGO_FEED_SCROLL_CHECK', {
+        scrollTop: feedList.scrollTop,
+        slotTop: rect?.top ?? null,
+        slotHeight: rect?.height ?? null,
+        slotInView: inView,
+      });
+    }, 800);
+  }, 500);
+};
+
 if (maestroBindReject && Capacitor.isNativePlatform()) {
   void (async () => {
     await AdMob.start();
@@ -238,28 +266,21 @@ if (maestroBindReject && Capacitor.isNativePlatform()) {
         adUnitId: BANNER_TEST_UNIT,
         useWebViewNativeUiEngine: false,
       });
-      await AdMob.feedAdBindProjection({ id, projectionSelector: '#maestro-bind-reject-slot' });
-      logFeed('MAESTRO_BIND_UNEXPECTED_OK');
-    } catch (error) {
-      logFeed('MAESTRO_BIND_REJECTED', { message: String(error) });
+      try {
+        await AdMob.feedAdBindProjection({ id, projectionSelector: '#maestro-bind-reject-slot' });
+        logFeed('MAESTRO_BIND_UNEXPECTED_OK');
+      } catch (bindError) {
+        const message = String(bindError);
+        if (/disabled|useWebViewNativeUiEngine/i.test(message)) {
+          logFeed('MAESTRO_BIND_REJECTED', { message });
+        } else {
+          logFeed('MAESTRO_BIND_UNEXPECTED_ERROR', { message });
+        }
+      }
+    } catch (createError) {
+      logFeed('MAESTRO_CREATE_FAILED', { message: String(createError) });
     }
   })();
-}
-
-if (ciFeedDemo && feedNativeUiEngine && Capacitor.isNativePlatform()) {
-  window.setTimeout(() => {
-    feedList.scrollTop = 400;
-    window.setTimeout(() => {
-      const slot = feedList.querySelector('.feed-ad-slot');
-      const rect = slot?.getBoundingClientRect();
-      const inView = rect ? rect.top > 0 && rect.bottom < window.innerHeight : false;
-      logFeed('CAPGO_FEED_SCROLL_CHECK', {
-        slotTop: rect?.top ?? null,
-        slotHeight: rect?.height ?? null,
-        slotInView: inView,
-      });
-    }, 800);
-  }, 12000);
 }
 
 if (ciFeedDemo && Capacitor.isNativePlatform()) {

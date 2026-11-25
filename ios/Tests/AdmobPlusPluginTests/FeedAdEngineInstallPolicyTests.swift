@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(CapgoCapacitorAdmob)
+@testable import CapgoCapacitorAdmob
+#else
 @testable import AdmobPlusPlugin
+#endif
 
 final class FeedAdEngineInstallPolicyTests: XCTestCase {
     func testEngineOffDoesNotRequireInstall() {
