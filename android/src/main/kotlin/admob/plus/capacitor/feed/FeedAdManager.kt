@@ -45,6 +45,10 @@ internal fun shouldInstallEngineChannelForTest(useWebViewNativeUiEngine: Boolean
     useWebViewNativeUiEngine && !engineChannelInstalled
 
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
+    companion object {
+        fun shouldInstallEngineChannel(useWebViewNativeUiEngine: Boolean, engineChannelInstalled: Boolean): Boolean =
+            shouldInstallEngineChannelForTest(useWebViewNativeUiEngine, engineChannelInstalled)
+    }
     private val entries = mutableMapOf<Int, FeedAdEntry>()
     private var nextId = 1
     private val mainHandler = Handler(Looper.getMainLooper())

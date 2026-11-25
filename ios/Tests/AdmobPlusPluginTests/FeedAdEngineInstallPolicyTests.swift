@@ -3,13 +3,13 @@ import XCTest
 
 final class FeedAdEngineInstallPolicyTests: XCTestCase {
     func testEngineOffDoesNotRequireInstall() {
-        XCTAssertFalse(FeedAdEngineInstallPolicy.shouldInstall(useEngine: false, channelInstalled: false))
-        XCTAssertFalse(FeedAdEngineInstallPolicy.shouldInstall(useEngine: false, channelInstalled: true))
+        XCTAssertFalse(FeedAdManager.shouldInstallEngineChannel(useEngine: false, channelInstalled: false))
+        XCTAssertFalse(FeedAdManager.shouldInstallEngineChannel(useEngine: false, channelInstalled: true))
     }
 
     func testEngineOnInstallsWhenChannelMissing() {
-        XCTAssertTrue(FeedAdEngineInstallPolicy.shouldInstall(useEngine: true, channelInstalled: false))
-        XCTAssertFalse(FeedAdEngineInstallPolicy.shouldInstall(useEngine: true, channelInstalled: true))
+        XCTAssertTrue(FeedAdManager.shouldInstallEngineChannel(useEngine: true, channelInstalled: false))
+        XCTAssertFalse(FeedAdManager.shouldInstallEngineChannel(useEngine: true, channelInstalled: true))
     }
 
     #if canImport(WebViewNativeUIEngine)

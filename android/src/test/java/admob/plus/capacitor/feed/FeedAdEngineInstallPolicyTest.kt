@@ -7,13 +7,13 @@ import org.junit.Test
 class FeedAdEngineInstallPolicyTest {
     @Test
     fun engineOffDoesNotInstall() {
-        assertFalse(shouldInstallEngineChannelForTest(useWebViewNativeUiEngine = false, engineChannelInstalled = false))
-        assertFalse(shouldInstallEngineChannelForTest(useWebViewNativeUiEngine = false, engineChannelInstalled = true))
+        assertFalse(FeedAdManager.shouldInstallEngineChannel(false, false))
+        assertFalse(FeedAdManager.shouldInstallEngineChannel(false, true))
     }
 
     @Test
     fun engineOnInstallsWhenNotYetInstalled() {
-        assertTrue(shouldInstallEngineChannelForTest(useWebViewNativeUiEngine = true, engineChannelInstalled = false))
-        assertFalse(shouldInstallEngineChannelForTest(useWebViewNativeUiEngine = true, engineChannelInstalled = true))
+        assertTrue(FeedAdManager.shouldInstallEngineChannel(true, false))
+        assertFalse(FeedAdManager.shouldInstallEngineChannel(true, true))
     }
 }

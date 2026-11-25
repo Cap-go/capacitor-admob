@@ -25,6 +25,10 @@ final class FeedAdManager {
 
     var hasEngineProjections: Bool { engineProjectionCount > 0 }
 
+    static func shouldInstallEngineChannel(useEngine: Bool, channelInstalled: Bool) -> Bool {
+        FeedAdEngineInstallPolicy.shouldInstall(useEngine: useEngine, channelInstalled: channelInstalled)
+    }
+
     func create(
         format: String,
         adUnitId: String,
@@ -96,12 +100,7 @@ final class FeedAdManager {
             engineProjectionCount += 1
         }
         #else
-        if entry.useWebViewNativeUiEngine {
-            throw AdMobError.unknown(
-                "WebViewNativeUIEngine is not linked. Add CapgoCapacitorAdmob/Engine and the WebViewNativeUIEngine path pod to your Podfile."
-            )
-        }
-        throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
+        _ = try entry.bindProjection(projectionSelector: projectionSelector)
         #endif
     }
 
