@@ -197,8 +197,8 @@ private final class FeedAdEntry: NSObject {
             throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
         }
         guard engineProjection == nil else { return false }
-        guard let plugin = plugin, let webView = plugin.bridge?.webView else {
-            throw ProjectionError.missingWebView
+        guard let plugin = plugin, plugin.bridge?.webView != nil else {
+            throw AdMobError.unknown("WebView unavailable")
         }
         engineProjection = try NativeUIProjection(
             webView: webView,
