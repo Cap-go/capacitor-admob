@@ -1,0 +1,7 @@
+appId: app.capgo.admob
+---
+- launchApp
+- assertVisible: "Feed events will appear here."
+- tapOn:
+    id: feedDestroyButton
+- assertVisible: "Feed events will appear here."

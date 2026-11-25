@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import GoogleMobileAds
 import Capacitor
+import WebViewNativeUIEngine
 
 private let minAutoRefreshMs = 30_000
 
@@ -16,8 +17,11 @@ final class FeedAdManager {
     static let shared = FeedAdManager()
     private var entries: [Int: FeedAdEntry] = [:]
     private var nextId = 1
+    private var engineProjectionCount = 0
 
     private init() {}
+
+    var hasEngineProjections: Bool { engineProjectionCount > 0 }
 
     func create(
         format: String,
@@ -25,6 +29,7 @@ final class FeedAdManager {
         positionKey: String?,
         autoRefreshMs: Int?,
         nativeStyle: [String: String]?,
+        useWebViewNativeUiEngine: Bool,
         plugin: AdmobPlusPlugin
     ) -> Int {
         let id = nextId
@@ -35,6 +40,7 @@ final class FeedAdManager {
             adUnitId: adUnitId,
             positionKey: positionKey,
             nativeStyle: nativeStyle ?? [:],
+            useWebViewNativeUiEngine: useWebViewNativeUiEngine,
             plugin: plugin
         )
         if let ms = autoRefreshMs {
@@ -68,6 +74,27 @@ final class FeedAdManager {
     func setAutoRefresh(id: Int, autoRefreshMs: Int?) {
         entries[id]?.setAutoRefresh(ms: autoRefreshMs)
     }
+
+    func bindProjection(id: Int, projectionSelector: String) throws {
+        guard let entry = entries[id] else {
+            throw AdMobError.adNotFound
+        }
+        if try entry.bindProjection(projectionSelector: projectionSelector) {
+            engineProjectionCount += 1
+        }
+    }
+
+    func receiveEngineEvent(eventName: String, data: [String: Any]?) {
+        guard hasEngineProjections else { return }
+        guard let feedAdId = data?["feedAdId"] as? Int, let entry = entries[feedAdId], entry.useWebViewNativeUiEngine else {
+            return
+        }
+        entry.engineProjection?.receive(eventName, data: data)
+    }
+
+    fileprivate func engineProjectionReleased() {
+        engineProjectionCount = max(0, engineProjectionCount - 1)
+    }
 }
 
 private enum FeedAdFormat {
@@ -81,7 +108,10 @@ private final class FeedAdEntry: NSObject {
     let adUnitId: String
     let positionKey: String?
     let nativeStyle: [String: String]
+    let useWebViewNativeUiEngine: Bool
     weak var plugin: AdmobPlusPlugin?
+
+    fileprivate var engineProjection: NativeUIProjection?
 
     private var overlayContainer: UIView?
     private var nativeAdView: NativeAdView?
@@ -99,6 +129,7 @@ private final class FeedAdEntry: NSObject {
         adUnitId: String,
         positionKey: String?,
         nativeStyle: [String: String],
+        useWebViewNativeUiEngine: Bool,
         plugin: AdmobPlusPlugin
     ) {
         self.id = id
@@ -106,6 +137,7 @@ private final class FeedAdEntry: NSObject {
         self.adUnitId = adUnitId
         self.positionKey = positionKey
         self.nativeStyle = nativeStyle
+        self.useWebViewNativeUiEngine = useWebViewNativeUiEngine
         self.plugin = plugin
         super.init()
     }
@@ -131,6 +163,11 @@ private final class FeedAdEntry: NSObject {
     }
 
     func destroy() {
+        if let engineProjection = engineProjection {
+            engineProjection.destroy()
+            self.engineProjection = nil
+            FeedAdManager.shared.engineProjectionReleased()
+        }
         refreshTimer?.invalidate()
         refreshTimer = nil
         nativeAd = nil
@@ -154,7 +191,34 @@ private final class FeedAdEntry: NSObject {
         }
     }
 
+    @discardableResult
+    func bindProjection(projectionSelector: String) throws -> Bool {
+        guard useWebViewNativeUiEngine else {
+            throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
+        }
+        guard engineProjection == nil else { return false }
+        guard let plugin = plugin, let webView = plugin.bridge?.webView else {
+            throw ProjectionError.missingWebView
+        }
+        engineProjection = try NativeUIProjection(
+            webView: webView,
+            plugin: plugin.jsName,
+            projectionSelector: projectionSelector,
+            receiveListeners: .init(
+                update: [Events.feedLoad, Events.feedRefresh],
+                match: ["feedAdId": id]
+            ),
+            failedFallback: .native,
+            canCapture: { [weak self] in self?.loaded ?? false },
+            view: { [weak self] in self?.nativeAdView ?? self?.bannerView }
+        )
+        return true
+    }
+
     func updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Bool) {
+        if useWebViewNativeUiEngine {
+            return
+        }
         DispatchQueue.main.async {
             guard let webView = self.plugin?.bridge?.webView,
                   let rootView = self.plugin?.bridge?.viewController?.view else { return }

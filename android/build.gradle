@@ -71,4 +71,5 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation "com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:$googleMobileAdsNextGenVersion"
     implementation "com.google.android.ump:user-messaging-platform:$userMessagingPlatformVersion"
+    implementation 'io.github.webview-native-ui:engine:1.0.11'
 }

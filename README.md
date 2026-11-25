@@ -37,6 +37,14 @@ We build, improve and fix our plugins with heavy use of AI, so issues usually ge
 - **Current SDKs**: Google Mobile Ads Next Gen SDK on Android and Google Mobile Ads SDK on iOS.
 - **Platforms**: iOS and Android. The web implementation is a no-op stub.
 
+## WebView Native UI Engine (optional)
+
+In-feed and banner overlay ads can opt into [`@webview-native-ui/engine`](https://github.com/webview-native-ui/engine) so native slots track DOM scroll, resize, and Web overlays without your app calling `feedAdUpdateBounds` on every frame.
+
+Set `useWebViewNativeUiEngine: true` on `FeedAdCreateOptions` (default `false`), then use `FeedAd.attachTo()` as usual. With the flag off, the plugin keeps the existing JavaScript bounds sync unchanged.
+
+CocoaPods apps must add a direct npm dependency on `@webview-native-ui/engine@1.0.11` and `pod 'WebViewNativeUIEngine', :path => '../../node_modules/@webview-native-ui/engine'` inside the app target in `Podfile` (outside `capacitor_pods`). Swift Package Manager apps pick up the engine through this plugin.
+
 AdMob SDK bridge for Capacitor apps
 
 Android now uses the Google Mobile Ads Next Gen SDK, and iOS is aligned to Google Mobile Ads SDK `13.1.x`, while preserving the existing Capacitor-facing API.
@@ -120,6 +128,7 @@ For local testing on a real device, pass `debugGeography` and `testDeviceIdentif
 * [`feedAdLoad(...)`](#feedadload)
 * [`feedAdIsLoaded(...)`](#feedadisloaded)
 * [`feedAdUpdateBounds(...)`](#feedadupdatebounds)
+* [`feedAdBindProjection(...)`](#feedadbindprojection)
 * [`feedAdSetAutoRefresh(...)`](#feedadsetautorefresh)
 * [`trackingAuthorizationStatus()`](#trackingauthorizationstatus)
 * [`requestTrackingAuthorization()`](#requesttrackingauthorization)
@@ -410,6 +419,24 @@ Position the native overlay over an HTML placeholder. Call on scroll, resize, an
 --------------------
 
 
+### feedAdBindProjection(...)
+
+```typescript
+feedAdBindProjection(opts: { id: number; projectionSelector: string; }) => Promise<void>
+```
+
+Bind a feed ad created with `useWebViewNativeUiEngine: true` to a DOM slot selector.
+Called by {@link FeedAd.attachTo}; apps rarely call this directly.
+
+| Param      | Type                                                     | Description                                               |
+| ---------- | -------------------------------------------------------- | --------------------------------------------------------- |
+| **`opts`** | <code>{ id: number; projectionSelector: string; }</code> | - Feed ad id and CSS selector for the placeholder element |
+
+**Since:** 8.3.0
+
+--------------------
+
+
 ### feedAdSetAutoRefresh(...)
 
 ```typescript
@@ -550,7 +577,7 @@ GADNativeAdView with the AdChoices icon and an ad attribution badge. This plugin
 overlays a compliant native view on your placeholder. Optional {@link FeedNativeAdAssets}
 are returned on `feed.load` for layout sizing only, not for manual click forwarding.
 
-<code>{ /** Native advanced or inline banner. */ format: <a href="#feedadformat">FeedAdFormat</a>; /** AdMob ad unit ID. */ adUnitId: string; /** Optional key echoed on feed events for your feed slot. */ positionKey?: string; /** * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds. * Omit or pass `null` to disable auto-refresh. */ autoRefreshMs?: number | null; /** Template colors when `format` is `native`. */ nativeStyle?: <a href="#feednativeadstyle">FeedNativeAdStyle</a>; }</code>
+<code>{ /** Native advanced or inline banner. */ format: <a href="#feedadformat">FeedAdFormat</a>; /** AdMob ad unit ID. */ adUnitId: string; /** Optional key echoed on feed events for your feed slot. */ positionKey?: string; /** * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds. * Omit or pass `null` to disable auto-refresh. */ autoRefreshMs?: number | null; /** * When `true`, native in-feed placement uses `@webview-native-ui/engine` scroll * tracking and DOM projection instead of JavaScript `feedAdUpdateBounds` sync. * Requires `FeedAd.attachTo()` on native platforms. iOS apps using CocoaPods must * also add `pod 'WebViewNativeUIEngine', :path =&gt; '../../node_modules/@webview-native-ui/engine'` * inside the app target in `Podfile` (outside `capacitor_pods`). * * @default false * @since 8.3.0 */ useWebViewNativeUiEngine?: boolean; /** Template colors when `format` is `native`. */ nativeStyle?: <a href="#feednativeadstyle">FeedNativeAdStyle</a>; }</code>
 
 
 #### FeedAdFormat

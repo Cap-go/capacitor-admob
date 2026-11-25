@@ -33,6 +33,7 @@ import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoader
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoaderCallback
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdRequest
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
+import io.github.webview_native_ui.engine.NativeUIProjection
 import kotlin.math.max
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
@@ -44,6 +45,10 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     private val entries = mutableMapOf<Int, FeedAdEntry>()
     private var nextId = 1
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var engineProjectionCount = 0
+    private var engineChannelInstalled = false
+
+    fun hasEngineProjections(): Boolean = engineProjectionCount > 0
 
     fun create(
         format: String,
@@ -51,6 +56,7 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
         positionKey: String?,
         autoRefreshMs: Int?,
         nativeStyle: Map<String, String>,
+        useWebViewNativeUiEngine: Boolean,
     ): Int {
         val id = nextId++
         val entry = FeedAdEntry(
@@ -59,6 +65,7 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
             adUnitId = adUnitId,
             positionKey = positionKey,
             nativeStyle = nativeStyle,
+            useWebViewNativeUiEngine = useWebViewNativeUiEngine,
             plugin = plugin,
             mainHandler = mainHandler,
         )
@@ -96,6 +103,44 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     fun setAutoRefresh(id: Int, autoRefreshMs: Int?) {
         entries[id]?.setAutoRefresh(autoRefreshMs)
     }
+
+    fun bindProjection(id: Int, projectionSelector: String): String? {
+        val entry = entries[id] ?: return "Feed ad not found"
+        if (!entry.useWebViewNativeUiEngine) {
+            return "useWebViewNativeUiEngine is disabled for this feed ad"
+        }
+        if (entry.engineProjection != null) {
+            return null
+        }
+        if (!engineChannelInstalled) {
+            runCatching { NativeUIProjection.install(plugin.bridge.webView) }
+                .onFailure {
+                    return "Failed to install Native UI projection channel: ${it.message}"
+                }
+            engineChannelInstalled = true
+        }
+        val error = entry.bindProjection(projectionSelector)
+        if (error == null) {
+            engineProjectionCount += 1
+        }
+        return error
+    }
+
+    fun receiveEngineEvent(eventName: String, data: JSObject) {
+        if (!hasEngineProjections()) {
+            return
+        }
+        val feedAdId = data.optInt("feedAdId", -1)
+        val entry = entries[feedAdId] ?: return
+        if (!entry.useWebViewNativeUiEngine) {
+            return
+        }
+        entry.engineProjection?.receive(eventName, data)
+    }
+
+    fun releaseEngineProjection() {
+        engineProjectionCount = max(0, engineProjectionCount - 1)
+    }
 }
 
 private enum class FeedAdFormat {
@@ -109,9 +154,13 @@ private class FeedAdEntry(
     val adUnitId: String,
     val positionKey: String?,
     val nativeStyle: Map<String, String>,
+    val useWebViewNativeUiEngine: Boolean,
     private val plugin: AdMobPlusPlugin,
     private val mainHandler: Handler,
 ) {
+    var engineProjection: NativeUIProjection? = null
+        private set
+
     private var adHost: View? = null
     private var nativeAd: NativeAd? = null
     private var bannerAdView: AdView? = null
@@ -128,6 +177,11 @@ private class FeedAdEntry(
         get() = loaded
 
     fun destroy() {
+        if (engineProjection != null) {
+            engineProjection?.close()
+            engineProjection = null
+            plugin.releaseFeedEngineProjection()
+        }
         mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
@@ -169,7 +223,34 @@ private class FeedAdEntry(
         }
     }
 
+    fun bindProjection(projectionSelector: String): String? {
+        if (engineProjection != null) {
+            return null
+        }
+        return runCatching {
+            engineProjection =
+                NativeUIProjection(
+                    window = plugin.activity.window,
+                    webView = plugin.bridge.webView,
+                    plugin = plugin.pluginHandle.id,
+                    projectionSelector = projectionSelector,
+                    receiveListeners =
+                        NativeUIProjection.ReceiveListeners(
+                            update = listOf(Generated.Events.FEED_LOAD, Generated.Events.FEED_REFRESH),
+                            match = mapOf("feedAdId" to id),
+                        ),
+                    failedFallback = NativeUIProjection.FailedFallback.NATIVE,
+                    canCapture = { loaded },
+                    view = { adHost },
+                )
+            null
+        }.getOrElse { it.message ?: it.toString() }
+    }
+
     fun updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Boolean) {
+        if (useWebViewNativeUiEngine) {
+            return
+        }
         mainHandler.post {
             val webView = plugin.bridge.webView
             val host = adHost ?: return@post

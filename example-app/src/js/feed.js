@@ -34,6 +34,7 @@ const samplePosts = [
 ];
 
 const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
+const feedNativeUiEngine = import.meta.env.VITE_FEED_ENGINE === '1';
 
 if (ciFeedDemo) {
   const focusFeedSectionOnly = () => {
@@ -98,6 +99,7 @@ const attachSlot = async (slot) => {
     adUnitId: isBanner ? BANNER_TEST_UNIT : NATIVE_TEST_UNIT,
     positionKey,
     autoRefreshMs: ciFeedDemo ? undefined : 60000,
+    useWebViewNativeUiEngine: feedNativeUiEngine,
     nativeStyle: {
       backgroundColor: '#1c1c1c',
       headlineTextColor: '#ffffff',
@@ -113,7 +115,16 @@ const attachSlot = async (slot) => {
     attachedFeedSlotKeys.add(positionKey);
     const minHeight = isBanner ? 60 : 280;
     placeholder.style.minHeight = `${minHeight}px`;
-    logFeed(`Attached ${positionKey}`, { format: isBanner ? 'banner' : 'native' });
+    logFeed(`Attached ${positionKey}`, {
+      format: isBanner ? 'banner' : 'native',
+      useWebViewNativeUiEngine: feedNativeUiEngine,
+    });
+    if (ciFeedDemo && feedNativeUiEngine) {
+      console.info('CAPGO_CI_FEED_ENGINE_ENABLED');
+    }
+    if (ciFeedDemo && !feedNativeUiEngine) {
+      console.info('CAPGO_CI_FEED_LEGACY_BOUNDS');
+    }
     return true;
   } catch (error) {
     await feedAd.destroy().catch(() => undefined);

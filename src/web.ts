@@ -103,6 +103,12 @@ export class AdMobPlusWeb extends WebPlugin implements AdMobPlusPlugin {
     console.log('feedAdUpdateBounds', opts);
   }
 
+  async feedAdBindProjection(
+    ...opts: Parameters<AdMobPlusPlugin['feedAdBindProjection']>
+  ): ReturnType<AdMobPlusPlugin['feedAdBindProjection']> {
+    console.log('feedAdBindProjection', opts);
+  }
+
   async feedAdSetAutoRefresh(
     ...opts: Parameters<AdMobPlusPlugin['feedAdSetAutoRefresh']>
   ): ReturnType<AdMobPlusPlugin['feedAdSetAutoRefresh']> {

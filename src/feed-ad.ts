@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 
 import type { FeedAdBounds, FeedAdCreateOptions } from './definitions';
+import { ensureFeedProjectionSelector } from './feed-projection';
 import { AdMob, ensureAdMobStarted } from './plugin-instance';
 
 const MIN_AUTO_REFRESH_MS = 30_000;
@@ -63,12 +64,22 @@ export class FeedAd {
    * Load the ad (if needed) and keep a native ad view aligned with `element`.
    */
   async attachTo(element: HTMLElement): Promise<void> {
+    if (this.opts.useWebViewNativeUiEngine && Capacitor.isNativePlatform()) {
+      const id = await this.create();
+      await this.load();
+      const projectionSelector = ensureFeedProjectionSelector(element);
+      await AdMob.feedAdBindProjection({ id, projectionSelector });
+      return;
+    }
     await this.load();
     this.startBoundsSync(element);
     await this.pushBounds(element);
   }
 
   async updatePosition(bounds: FeedAdBounds): Promise<void> {
+    if (this.opts.useWebViewNativeUiEngine && Capacitor.isNativePlatform()) {
+      return;
+    }
     const id = await this.create();
     await AdMob.feedAdUpdateBounds({ id, ...bounds });
   }
