@@ -69,6 +69,8 @@ export class FeedAd {
       const projectionSelector = ensureFeedProjectionSelector(element);
       await this.load();
       await AdMob.feedAdBindProjection({ id, projectionSelector });
+      this.startBoundsSync(element);
+      await this.pushBounds(element);
       return;
     }
     await this.load();
@@ -77,9 +79,6 @@ export class FeedAd {
   }
 
   async updatePosition(bounds: FeedAdBounds): Promise<void> {
-    if (this.opts.useWebViewNativeUiEngine && Capacitor.isNativePlatform()) {
-      return;
-    }
     const id = await this.create();
     await AdMob.feedAdUpdateBounds({ id, ...bounds });
   }

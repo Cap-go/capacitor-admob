@@ -34,7 +34,9 @@ const samplePosts = [
 ];
 
 const ciFeedDemo = import.meta.env.VITE_CI_FEED === '1';
+const ciFeedManual = import.meta.env.VITE_CI_FEED_MANUAL === '1';
 const feedNativeUiEngine = import.meta.env.VITE_FEED_ENGINE === '1';
+const maestroBindReject = import.meta.env.VITE_MAESTRO_BIND_REJECT === '1';
 
 if (ciFeedDemo) {
   const focusFeedSectionOnly = () => {
@@ -227,7 +229,33 @@ const scrollFeedSectionIntoView = () => {
   document.getElementById('feedSection')?.scrollIntoView({ block: 'start', behavior: 'auto' });
 };
 
-if (ciFeedDemo && Capacitor.isNativePlatform()) {
+if (maestroBindReject && Capacitor.isNativePlatform()) {
+  void (async () => {
+    await AdMob.start();
+    try {
+      const { id } = await AdMob.feedAdCreate({
+        format: 'banner',
+        adUnitId: BANNER_TEST_UNIT,
+        useWebViewNativeUiEngine: false,
+      });
+      await AdMob.feedAdBindProjection({ id, projectionSelector: '#maestro-bind-reject-slot' });
+      logFeed('MAESTRO_BIND_UNEXPECTED_OK');
+    } catch (error) {
+      logFeed('MAESTRO_BIND_REJECTED', { message: String(error) });
+    }
+  })();
+}
+
+if (ciFeedDemo && feedNativeUiEngine && Capacitor.isNativePlatform()) {
+  window.setTimeout(() => {
+    feedList.scrollTop = 400;
+    window.setTimeout(() => {
+      logFeed('CAPGO_FEED_SCROLL_CHECK');
+    }, 800);
+  }, 12000);
+}
+
+if (ciFeedDemo && !ciFeedManual && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
   window.setTimeout(async () => {
     scrollFeedSectionIntoView();

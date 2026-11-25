@@ -2,7 +2,9 @@ import Foundation
 import UIKit
 import GoogleMobileAds
 import Capacitor
+#if canImport(WebViewNativeUIEngine)
 import WebViewNativeUIEngine
+#endif
 
 private let minAutoRefreshMs = 30_000
 
@@ -89,22 +91,34 @@ final class FeedAdManager {
         guard let entry = entries[id] else {
             throw AdMobError.adNotFound
         }
+        #if canImport(WebViewNativeUIEngine)
         if try entry.bindProjection(projectionSelector: projectionSelector) {
             engineProjectionCount += 1
         }
+        #else
+        if entry.useWebViewNativeUiEngine {
+            throw AdMobError.unknown(
+                "WebViewNativeUIEngine is not linked. Add CapgoCapacitorAdmob/Engine and the WebViewNativeUIEngine path pod to your Podfile."
+            )
+        }
+        #endif
     }
 
     func receiveEngineEvent(eventName: String, data: [String: Any]?) {
+        #if canImport(WebViewNativeUIEngine)
         guard hasEngineProjections else { return }
         guard let feedAdId = data?["feedAdId"] as? Int, let entry = entries[feedAdId], entry.useWebViewNativeUiEngine else {
             return
         }
         entry.engineProjection?.receive(eventName, data: data)
+        #endif
     }
 
+    #if canImport(WebViewNativeUIEngine)
     fileprivate func engineProjectionReleased() {
         engineProjectionCount = max(0, engineProjectionCount - 1)
     }
+    #endif
 }
 
 private enum FeedAdFormat {
@@ -121,8 +135,10 @@ private final class FeedAdEntry: NSObject {
     let useWebViewNativeUiEngine: Bool
     weak var plugin: AdmobPlusPlugin?
 
+    #if canImport(WebViewNativeUIEngine)
     fileprivate var engineProjection: NativeUIProjection?
     private var boundProjectionSelector: String?
+    #endif
 
     private var overlayContainer: UIView?
     private var nativeAdView: NativeAdView?
@@ -174,7 +190,9 @@ private final class FeedAdEntry: NSObject {
     }
 
     func destroy() {
+        #if canImport(WebViewNativeUIEngine)
         releaseEngineProjection()
+        #endif
         refreshTimer?.invalidate()
         refreshTimer = nil
         nativeAd = nil
@@ -198,6 +216,7 @@ private final class FeedAdEntry: NSObject {
         }
     }
 
+    #if canImport(WebViewNativeUIEngine)
     private func releaseEngineProjection() {
         if let engineProjection = engineProjection {
             engineProjection.destroy()
@@ -237,6 +256,17 @@ private final class FeedAdEntry: NSObject {
         boundProjectionSelector = projectionSelector
         return true
     }
+    #else
+    @discardableResult
+    func bindProjection(projectionSelector: String) throws -> Bool {
+        if useWebViewNativeUiEngine {
+            throw AdMobError.unknown(
+                "WebViewNativeUIEngine is not linked. Add CapgoCapacitorAdmob/Engine and the WebViewNativeUIEngine path pod to your Podfile."
+            )
+        }
+        throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
+    }
+    #endif
 
     private func syncOverlayVisibility() {
         overlayContainer?.isHidden = !loaded
@@ -258,9 +288,6 @@ private final class FeedAdEntry: NSObject {
     }
 
     func updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Bool) {
-        if useWebViewNativeUiEngine && engineProjection != nil {
-            return
-        }
         DispatchQueue.main.async {
             guard let webView = self.plugin?.bridge?.webView,
                   let rootView = self.plugin?.bridge?.viewController?.view else { return }

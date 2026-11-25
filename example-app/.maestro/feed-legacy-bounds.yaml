@@ -4,13 +4,7 @@ appId: app.capgo.admob
 - extendedWaitUntil:
     visible: ".*Feed events.*"
     timeout: 60000
-- runFlow:
-    when:
-      visible:
-        id: feedStartButton
-    commands:
-      - tapOn:
-          id: feedStartButton
+- tapOn: "Start Feed Ads"
 - extendedWaitUntil:
     visible: ".*feed\\.load( |$).*"
     timeout: 120000

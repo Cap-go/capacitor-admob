@@ -35,7 +35,6 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         helper = Helper(this)
         consentHelper = ConsentHelper(this)
         feedAdManager = FeedAdManager(this)
-        feedAdManager?.ensureEngineChannelInstalled()
         ExecuteContext.plugin = this
     }
 

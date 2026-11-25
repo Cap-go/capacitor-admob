@@ -41,6 +41,9 @@ private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
 private const val MAX_NATIVE_NO_FILL_RETRIES = 0
 private const val NATIVE_NO_FILL_RETRY_DELAY_MS = 2_000L
 
+internal fun shouldInstallEngineChannelForTest(useWebViewNativeUiEngine: Boolean, engineChannelInstalled: Boolean): Boolean =
+    useWebViewNativeUiEngine && !engineChannelInstalled
+
 class FeedAdManager(private val plugin: AdMobPlusPlugin) {
     private val entries = mutableMapOf<Int, FeedAdEntry>()
     private var nextId = 1
@@ -50,9 +53,10 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
 
     fun hasEngineProjections(): Boolean = engineProjectionCount > 0
 
-    fun ensureEngineChannelInstalled() {
-        installEngineChannelIfNeeded()
-    }
+    fun isEngineChannelInstalled(): Boolean = engineChannelInstalled
+
+    internal fun shouldInstallEngineChannel(useWebViewNativeUiEngine: Boolean): Boolean =
+        shouldInstallEngineChannelForTest(useWebViewNativeUiEngine, engineChannelInstalled)
 
     fun create(
         format: String,
@@ -271,6 +275,7 @@ private class FeedAdEntry(
             }
             releaseEngineProjection()
         }
+        ensureAdHostInHierarchy()
         return runCatching {
             engineProjection =
                 NativeUIProjection(
@@ -293,9 +298,6 @@ private class FeedAdEntry(
     }
 
     fun updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Boolean) {
-        if (useWebViewNativeUiEngine && engineProjection != null) {
-            return
-        }
         mainHandler.post {
             val webView = plugin.bridge.webView
             val host = adHost ?: return@post
@@ -469,6 +471,7 @@ private class FeedAdEntry(
             ad.destroy()
             return
         }
+        ensureAdHostInHierarchy()
         val oldHost = adHost
         val oldParent = oldHost?.parent as? ViewGroup
         oldParent?.removeView(oldHost)

@@ -40,10 +40,8 @@ describe('FeedAd bounds vs engine', () => {
     expect(el.id.startsWith('capgo-feed-ad-')).toBe(true);
   });
 
-  it('legacy attachTo syncs bounds and never binds projection', async () => {
-    const el = document.createElement('div');
-    document.body.appendChild(el);
-    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+  const mockRect = (): DOMRect =>
+    ({
       left: 10,
       top: 20,
       width: 300,
@@ -53,7 +51,13 @@ describe('FeedAd bounds vs engine', () => {
       x: 10,
       y: 20,
       toJSON: () => ({}),
-    } as DOMRect);
+    }) as DOMRect;
+
+  it('legacy attachTo syncs bounds and never binds projection', async () => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const rectSpy = vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(mockRect());
+    const addListenerSpy = vi.spyOn(window, 'addEventListener');
 
     const feedAd = new FeedAd({
       format: 'banner',
@@ -62,13 +66,27 @@ describe('FeedAd bounds vs engine', () => {
     await feedAd.attachTo(el);
     expect(mockAdMob.feedAdBindProjection).not.toHaveBeenCalled();
     expect(mockAdMob.feedAdUpdateBounds).toHaveBeenCalled();
+    expect(addListenerSpy.mock.calls.some(([type]) => type === 'scroll')).toBe(true);
+
+    rectSpy.mockReturnValue({
+      ...mockRect(),
+      top: 40,
+      left: 15,
+    } as DOMRect);
+    window.dispatchEvent(new Event('scroll'));
+    await vi.waitFor(() => expect(mockAdMob.feedAdUpdateBounds.mock.calls.length).toBeGreaterThan(1));
+
     await feedAd.destroy();
     document.body.removeChild(el);
+    addListenerSpy.mockRestore();
+    rectSpy.mockRestore();
   });
 
-  it('engine attachTo binds projection and skips bounds sync', async () => {
+  it('engine attachTo binds projection, sets initial bounds, and syncs on scroll', async () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
+    const rectSpy = vi.spyOn(el, 'getBoundingClientRect').mockReturnValue(mockRect());
+
     const feedAd = new FeedAd({
       format: 'banner',
       adUnitId: 'test-unit',
@@ -80,8 +98,17 @@ describe('FeedAd bounds vs engine', () => {
       id: 1,
       projectionSelector: `#${el.id}`,
     });
-    expect(mockAdMob.feedAdUpdateBounds).not.toHaveBeenCalled();
+    expect(mockAdMob.feedAdUpdateBounds).toHaveBeenCalled();
+
+    rectSpy.mockReturnValue({
+      ...mockRect(),
+      top: 55,
+    } as DOMRect);
+    window.dispatchEvent(new Event('scroll'));
+    await vi.waitFor(() => expect(mockAdMob.feedAdUpdateBounds.mock.calls.length).toBeGreaterThan(1));
+
     await feedAd.destroy();
     document.body.removeChild(el);
+    rectSpy.mockRestore();
   });
 });

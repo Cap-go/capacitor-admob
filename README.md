@@ -47,7 +47,18 @@ In-feed and banner overlay ads can opt into [`@webview-native-ui/engine`](https:
 
 Set `useWebViewNativeUiEngine: true` on `FeedAdCreateOptions` (default `false`), then use `FeedAd.attachTo()` as usual. With the flag off, the plugin keeps the existing JavaScript bounds sync unchanged.
 
-CocoaPods apps must add a direct npm dependency on `@webview-native-ui/engine@1.0.11` and `pod 'WebViewNativeUIEngine', :path => '../../node_modules/@webview-native-ui/engine'` inside the app target in `Podfile` (outside `capacitor_pods`). Swift Package Manager apps pick up the engine through this plugin.
+CocoaPods default install uses the `Core` subspec only, so legacy `pod install` does not pull `WebViewNativeUIEngine`.
+
+To opt in on CocoaPods:
+
+```ruby
+pod 'CapgoCapacitorAdmob/Engine', :path => '../node_modules/@capgo/capacitor-admob'
+pod 'WebViewNativeUIEngine', :path => '../node_modules/@webview-native-ui/engine'
+```
+
+Install `@webview-native-ui/engine@1.0.11` from npm. Place both pods in the app target in `Podfile` (outside `capacitor_pods`).
+
+Swift Package Manager apps pick up the engine through `Package.swift`.
 
 ## Documentation
 
@@ -577,7 +588,7 @@ GADNativeAdView with the AdChoices icon and an ad attribution badge. This plugin
 overlays a compliant native view on your placeholder. Optional {@link FeedNativeAdAssets}
 are returned on `feed.load` for layout sizing only, not for manual click forwarding.
 
-<code>{ /** Native advanced or inline banner. */ format: <a href="#feedadformat">FeedAdFormat</a>; /** AdMob ad unit ID. */ adUnitId: string; /** Optional key echoed on feed events for your feed slot. */ positionKey?: string; /** * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds. * Omit or pass `null` to disable auto-refresh. */ autoRefreshMs?: number | null; /** * When `true`, native in-feed placement uses `@webview-native-ui/engine` scroll * tracking and DOM projection instead of JavaScript `feedAdUpdateBounds` sync. * Requires `FeedAd.attachTo()` on native platforms. iOS apps using CocoaPods must * also add `pod 'WebViewNativeUIEngine', :path =&gt; '../../node_modules/@webview-native-ui/engine'` * inside the app target in `Podfile` (outside `capacitor_pods`). * * @default false * @since 8.3.0 */ useWebViewNativeUiEngine?: boolean; /** Template colors when `format` is `native`. */ nativeStyle?: <a href="#feednativeadstyle">FeedNativeAdStyle</a>; }</code>
+<code>{ /** Native advanced or inline banner. */ format: <a href="#feedadformat">FeedAdFormat</a>; /** AdMob ad unit ID. */ adUnitId: string; /** Optional key echoed on feed events for your feed slot. */ positionKey?: string; /** * Auto-refresh interval in milliseconds. AdMob requires at least 30 seconds. * Omit or pass `null` to disable auto-refresh. */ autoRefreshMs?: number | null; /** * When `true`, native in-feed placement uses `@webview-native-ui/engine` scroll * tracking and DOM projection. Native views still receive slot geometry via * `feedAdUpdateBounds` from `FeedAd.attachTo()` (initial layout and scroll updates). * Requires `FeedAd.attachTo()` on native platforms. CocoaPods opt-in: `pod * 'CapgoCapacitorAdmob/Engine'`, `pod 'WebViewNativeUIEngine', :path =&gt; * '../../node_modules/@webview-native-ui/engine'` in the app target (outside * `capacitor_pods`). Default `CapgoCapacitorAdmob/Core` needs no engine pods. * * @default false * @since 8.3.0 */ useWebViewNativeUiEngine?: boolean; /** Template colors when `format` is `native`. */ nativeStyle?: <a href="#feednativeadstyle">FeedNativeAdStyle</a>; }</code>
 
 
 #### FeedAdFormat
