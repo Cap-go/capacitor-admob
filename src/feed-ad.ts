@@ -21,7 +21,6 @@ export class FeedAd {
   private createPromise: Promise<number> | null = null;
   private readonly opts: FeedAdCreateOptions;
   private stopSync: (() => void) | null = null;
-  private boundProjectionSelector: string | null = null;
 
   constructor(opts: FeedAdCreateOptions) {
     if (opts.autoRefreshMs !== undefined && opts.autoRefreshMs !== null && opts.autoRefreshMs < MIN_AUTO_REFRESH_MS) {
@@ -68,12 +67,8 @@ export class FeedAd {
     if (this.opts.useWebViewNativeUiEngine && Capacitor.isNativePlatform()) {
       const id = await this.create();
       const projectionSelector = ensureFeedProjectionSelector(element);
-      if (this.boundProjectionSelector !== null && this.boundProjectionSelector !== projectionSelector) {
-        throw new Error('FeedAd is already bound to a different DOM slot');
-      }
       await this.load();
       await AdMob.feedAdBindProjection({ id, projectionSelector });
-      this.boundProjectionSelector = projectionSelector;
       return;
     }
     await this.load();
@@ -99,7 +94,6 @@ export class FeedAd {
 
   async destroy(): Promise<void> {
     this.stopBoundsSync();
-    this.boundProjectionSelector = null;
     if (this.id !== null) {
       await AdMob.feedAdDestroy({ id: this.id });
       this.id = null;

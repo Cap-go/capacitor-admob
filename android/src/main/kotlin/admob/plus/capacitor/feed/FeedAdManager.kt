@@ -127,13 +127,11 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
         if (!entry.useWebViewNativeUiEngine) {
             return "useWebViewNativeUiEngine is disabled for this feed ad"
         }
-        if (entry.engineProjection != null) {
-            return null
-        }
+        val hadProjection = entry.engineProjection != null
         installEngineChannelIfNeeded()
         entry.ensureAdHostInHierarchy()
         val error = entry.bindProjection(projectionSelector)
-        if (error == null) {
+        if (error == null && !hadProjection) {
             engineProjectionCount += 1
         }
         return error
@@ -174,6 +172,8 @@ private class FeedAdEntry(
     var engineProjection: NativeUIProjection? = null
         private set
 
+    private var boundProjectionSelector: String? = null
+
     private var adHost: View? = null
     private var nativeAd: NativeAd? = null
     private var bannerAdView: AdView? = null
@@ -189,12 +189,17 @@ private class FeedAdEntry(
     val isLoaded: Boolean
         get() = loaded
 
-    fun destroy() {
+    private fun releaseEngineProjection() {
         if (engineProjection != null) {
             engineProjection?.close()
             engineProjection = null
+            boundProjectionSelector = null
             plugin.releaseFeedEngineProjection()
         }
+    }
+
+    fun destroy() {
+        releaseEngineProjection()
         mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }
         refreshRunnable = null
@@ -254,7 +259,10 @@ private class FeedAdEntry(
 
     fun bindProjection(projectionSelector: String): String? {
         if (engineProjection != null) {
-            return null
+            if (boundProjectionSelector == projectionSelector) {
+                return null
+            }
+            releaseEngineProjection()
         }
         return runCatching {
             engineProjection =
@@ -272,6 +280,7 @@ private class FeedAdEntry(
                     canCapture = { loaded },
                     view = { adHost },
                 )
+            boundProjectionSelector = projectionSelector
             null
         }.getOrElse { it.message ?: it.toString() }
     }

@@ -55,6 +55,11 @@ final class FeedAdManager {
         entries.removeValue(forKey: id)
     }
 
+    func destroyAll() {
+        entries.values.forEach { $0.destroy() }
+        entries.removeAll()
+    }
+
     func load(id: Int, completion: @escaping (Error?) -> Void) {
         guard let entry = entries[id] else {
             completion(AdMobError.adNotFound)
@@ -112,6 +117,7 @@ private final class FeedAdEntry: NSObject {
     weak var plugin: AdmobPlusPlugin?
 
     fileprivate var engineProjection: NativeUIProjection?
+    private var boundProjectionSelector: String?
 
     private var overlayContainer: UIView?
     private var nativeAdView: NativeAdView?
@@ -163,11 +169,7 @@ private final class FeedAdEntry: NSObject {
     }
 
     func destroy() {
-        if let engineProjection = engineProjection {
-            engineProjection.destroy()
-            self.engineProjection = nil
-            FeedAdManager.shared.engineProjectionReleased()
-        }
+        releaseEngineProjection()
         refreshTimer?.invalidate()
         refreshTimer = nil
         nativeAd = nil
@@ -191,15 +193,30 @@ private final class FeedAdEntry: NSObject {
         }
     }
 
+    private func releaseEngineProjection() {
+        if let engineProjection = engineProjection {
+            engineProjection.destroy()
+            self.engineProjection = nil
+            boundProjectionSelector = nil
+            FeedAdManager.shared.engineProjectionReleased()
+        }
+    }
+
     @discardableResult
     func bindProjection(projectionSelector: String) throws -> Bool {
         guard useWebViewNativeUiEngine else {
             throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
         }
-        guard engineProjection == nil else { return false }
-        guard let plugin = plugin, plugin.bridge?.webView != nil else {
+        if let boundProjectionSelector, boundProjectionSelector == projectionSelector, engineProjection != nil {
+            return false
+        }
+        if engineProjection != nil {
+            releaseEngineProjection()
+        }
+        guard let plugin = plugin, let webView = plugin.bridge?.webView else {
             throw AdMobError.unknown("WebView unavailable")
         }
+        syncEngineHostAttached()
         engineProjection = try NativeUIProjection(
             webView: webView,
             plugin: plugin.jsName,
@@ -212,6 +229,7 @@ private final class FeedAdEntry: NSObject {
             canCapture: { [weak self] in self?.loaded ?? false },
             view: { [weak self] in self?.nativeAdView ?? self?.bannerView }
         )
+        boundProjectionSelector = projectionSelector
         return true
     }
 

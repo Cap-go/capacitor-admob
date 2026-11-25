@@ -75,7 +75,7 @@
     "typescript": "^6.0.3",
     "prettier-pretty-check": "^0.2.0",
     "jsdom": "26.1.0",
-    "vitest": "4.0.18"
+    "vitest": "4.1.0"
   },
   "peerDependencies": {
     "@capacitor/core": ">=8.0.0"

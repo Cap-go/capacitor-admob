@@ -389,4 +389,8 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func getPluginVersion(_ call: CAPPluginCall) {
         call.resolve(["version": self.pluginVersion])
     }
+
+    deinit {
+        FeedAdManager.shared.destroyAll()
+    }
 }
