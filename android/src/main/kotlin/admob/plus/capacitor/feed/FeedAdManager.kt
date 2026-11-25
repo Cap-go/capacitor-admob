@@ -35,6 +35,7 @@ import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdRequest
 import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
 import io.github.webview_native_ui.engine.NativeUIProjection
 import kotlin.math.max
+import org.json.JSONObject
 
 private const val MIN_AUTO_REFRESH_MS = 30_000L
 private const val FEED_SCREENSHOT_LOG_TAG = "CapgoAdmobFeed"
@@ -343,7 +344,51 @@ private class FeedAdEntry(
             ) {
                 writeCiBannerOverlaySnapshotNow(host, w, h)
             }
+            if (useWebViewNativeUiEngine) {
+                dispatchNativeBoundsDiagnostic(
+                    x = x,
+                    y = y,
+                    width = width,
+                    height = height,
+                    visible = visible,
+                    nativeLeftPx = left,
+                    nativeTopPx = top,
+                    nativeWidthPx = w,
+                    nativeHeightPx = h,
+                    nativeVisible = host.visibility == View.VISIBLE,
+                )
+            }
         }
+    }
+
+    private fun dispatchNativeBoundsDiagnostic(
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        visible: Boolean,
+        nativeLeftPx: Int,
+        nativeTopPx: Int,
+        nativeWidthPx: Int,
+        nativeHeightPx: Int,
+        nativeVisible: Boolean,
+    ) {
+        val detail =
+            JSONObject()
+                .put("feedAdId", id)
+                .put("requestedX", x)
+                .put("requestedY", y)
+                .put("requestedWidth", width)
+                .put("requestedHeight", height)
+                .put("requestedVisible", visible)
+                .put("nativeLeftPx", nativeLeftPx)
+                .put("nativeTopPx", nativeTopPx)
+                .put("nativeWidthPx", nativeWidthPx)
+                .put("nativeHeightPx", nativeHeightPx)
+                .put("nativeVisible", nativeVisible)
+        val script =
+            "window.dispatchEvent(new CustomEvent('capgo-feed-native-bounds',{detail:$detail}));"
+        plugin.bridge.webView.evaluateJavascript(script, null)
     }
 
     private fun scheduleCiBannerOverlaySnapshotAfterLoad() {

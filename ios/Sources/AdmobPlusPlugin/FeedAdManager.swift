@@ -302,7 +302,49 @@ private final class FeedAdEntry: NSObject {
             target?.frame = frame
             container.isHidden = !visible || !self.loaded
             container.frame = rootView.bounds
+            if self.useWebViewNativeUiEngine, let target = target {
+                self.dispatchNativeBoundsDiagnostic(
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height,
+                    visible: visible,
+                    nativeFrame: target.frame,
+                    nativeVisible: !container.isHidden
+                )
+            }
         }
+    }
+
+    private func dispatchNativeBoundsDiagnostic(
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        visible: Bool,
+        nativeFrame: CGRect,
+        nativeVisible: Bool
+    ) {
+        guard let webView = plugin?.bridge?.webView else { return }
+        let payload: [String: Any] = [
+            "feedAdId": id,
+            "requestedX": x,
+            "requestedY": y,
+            "requestedWidth": width,
+            "requestedHeight": height,
+            "requestedVisible": visible,
+            "nativeLeftPt": nativeFrame.origin.x,
+            "nativeTopPt": nativeFrame.origin.y,
+            "nativeWidthPt": nativeFrame.width,
+            "nativeHeightPt": nativeFrame.height,
+            "nativeVisible": nativeVisible,
+        ]
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: payload),
+            let json = String(data: data, encoding: .utf8)
+        else { return }
+        let script = "window.dispatchEvent(new CustomEvent('capgo-feed-native-bounds',{detail:\(json)}));"
+        webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
     private var formatString: String {

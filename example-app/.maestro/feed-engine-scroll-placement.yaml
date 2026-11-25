@@ -10,4 +10,4 @@ appId: app.capgo.admob
 - extendedWaitUntil:
     visible: ".*CAPGO_FEED_SCROLL_CHECK.*"
     timeout: 120000
-- assertVisible: "(?s).*CAPGO_FEED_SCROLL_CHECK.*slotInView.*true.*"
+- assertVisible: "(?s).*CAPGO_FEED_SCROLL_CHECK.*slotInView.*true.*nativeSynced.*true.*"

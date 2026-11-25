@@ -12,6 +12,12 @@ const feedList = document.getElementById('feedList');
 const feedAds = [];
 const attachedFeedSlotKeys = new Set();
 let feedAttachInProgress = false;
+/** @type {{ detail: Record<string, unknown> } | null} */
+let lastNativeOverlayBounds = null;
+
+window.addEventListener('capgo-feed-native-bounds', (event) => {
+  lastNativeOverlayBounds = event;
+});
 
 const logFeed = (message, details) => {
   const stamp = new Date().toISOString().split('T')[1].replace('Z', '');
@@ -247,11 +253,22 @@ const scheduleScrollPlacementCheck = () => {
       const slot = feedList.querySelector('.feed-ad-slot');
       const rect = slot?.getBoundingClientRect();
       const inView = rect ? rect.top > 0 && rect.bottom < window.innerHeight : false;
+      const native = lastNativeOverlayBounds?.detail;
+      const nativeSynced =
+        !!native &&
+        native.nativeVisible === true &&
+        Number(native.nativeWidthPx ?? native.nativeWidthPt ?? 0) > 40 &&
+        Number(native.nativeHeightPx ?? native.nativeHeightPt ?? 0) > 20 &&
+        !!rect &&
+        Math.abs(Number(native.requestedY) - rect.top) < 16 &&
+        Math.abs(Number(native.requestedX) - rect.left) < 16;
       logFeed('CAPGO_FEED_SCROLL_CHECK', {
         scrollTop: feedList.scrollTop,
         slotTop: rect?.top ?? null,
         slotHeight: rect?.height ?? null,
         slotInView: inView,
+        nativeOverlay: native ?? null,
+        nativeSynced,
       });
     }, 800);
   }, 500);
