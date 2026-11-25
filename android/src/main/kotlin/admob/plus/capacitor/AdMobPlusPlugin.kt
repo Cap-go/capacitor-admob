@@ -336,6 +336,11 @@ class AdMobPlusPlugin : Plugin(), Helper.Adapter {
         feedAdManager?.releaseEngineProjection()
     }
 
+    override fun handleOnDestroy() {
+        feedAdManager?.destroyAll()
+        super.handleOnDestroy()
+    }
+
     override val activity: Activity
         get() = getActivity()
 

@@ -70,12 +70,30 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
             mainHandler = mainHandler,
         )
         autoRefreshMs?.let { entry.setAutoRefresh(it) }
+        if (useWebViewNativeUiEngine) {
+            installEngineChannelIfNeeded()
+        }
         entries[id] = entry
         return id
     }
 
     fun destroy(id: Int) {
         entries.remove(id)?.destroy()
+    }
+
+    fun destroyAll() {
+        entries.values.toList().forEach { it.destroy() }
+        entries.clear()
+    }
+
+    private fun installEngineChannelIfNeeded() {
+        if (engineChannelInstalled) {
+            return
+        }
+        runCatching {
+            NativeUIProjection.install(plugin.bridge.webView)
+            engineChannelInstalled = true
+        }
     }
 
     fun load(id: Int, onComplete: (String?) -> Unit) {
@@ -112,13 +130,8 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
         if (entry.engineProjection != null) {
             return null
         }
-        if (!engineChannelInstalled) {
-            runCatching { NativeUIProjection.install(plugin.bridge.webView) }
-                .onFailure {
-                    return "Failed to install Native UI projection channel: ${it.message}"
-                }
-            engineChannelInstalled = true
-        }
+        installEngineChannelIfNeeded()
+        entry.ensureAdHostInHierarchy()
         val error = entry.bindProjection(projectionSelector)
         if (error == null) {
             engineProjectionCount += 1
@@ -220,6 +233,22 @@ private class FeedAdEntry(
                 FeedAdFormat.NATIVE -> loadNative()
                 FeedAdFormat.BANNER -> loadBanner()
             }
+        }
+    }
+
+    fun ensureAdHostInHierarchy() {
+        if (!useWebViewNativeUiEngine) {
+            return
+        }
+        mainHandler.post {
+            val webView = plugin.bridge.webView
+            val host = adHost ?: return@post
+            val parent = webView.parent as? ViewGroup ?: return@post
+            if (host.parent == null) {
+                parent.addView(host)
+            }
+            host.visibility = if (loaded) View.VISIBLE else View.INVISIBLE
+            host.bringToFront()
         }
     }
 
@@ -424,6 +453,7 @@ private class FeedAdEntry(
         oldParent?.addView(nativeAdView)
         loaded = true
         nativeAdView.visibility = View.VISIBLE
+        ensureAdHostInHierarchy()
 
         val assets = JSObject()
         assets.put("headline", ad.headline ?: "")
@@ -522,6 +552,7 @@ private class FeedAdEntry(
             object : AdLoadCallback<BannerAd> {
                 override fun onAdLoaded(bannerAd: BannerAd) {
                     loaded = true
+                    ensureAdHostInHierarchy()
                     bannerAd.adEventCallback = object : BannerAdEventCallback {
                         override fun onAdClicked() {
                             emitFeed(Generated.Events.FEED_CLICK, null)

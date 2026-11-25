@@ -215,6 +215,21 @@ private final class FeedAdEntry: NSObject {
         return true
     }
 
+    private func syncEngineHostAttached() {
+        guard useWebViewNativeUiEngine else { return }
+        DispatchQueue.main.async {
+            guard let webView = self.plugin?.bridge?.webView,
+                  let rootView = self.plugin?.bridge?.viewController?.view else { return }
+            let container = self.ensureOverlayContainer(on: rootView, below: webView)
+            let target = self.nativeAdView ?? self.bannerView
+            if let target, target.superview == nil {
+                container.addSubview(target)
+            }
+            container.frame = rootView.bounds
+            container.isHidden = !self.loaded
+        }
+    }
+
     func updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Bool) {
         if useWebViewNativeUiEngine {
             return
@@ -298,6 +313,7 @@ private final class FeedAdEntry: NSObject {
         nativeAdView = adView
         loaded = true
         container.isHidden = false
+        syncEngineHostAttached()
 
         let assets: [String: Any] = [
             "headline": nativeAd.headline ?? "",
@@ -421,6 +437,7 @@ extension FeedAdEntry: BannerViewDelegate {
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         loaded = true
         overlayContainer?.isHidden = false
+        syncEngineHostAttached()
         let assets: [String: Any] = [
             "width": bannerView.adSize.size.width,
             "height": bannerView.adSize.size.height,

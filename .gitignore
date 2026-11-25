@@ -70,3 +70,4 @@ captures
 .externalNativeBuild
 package-lock.json
 screenshots/
+android/.sdk/

@@ -62,6 +62,7 @@ describe('FeedAd bounds vs engine', () => {
     await feedAd.attachTo(el);
     expect(mockAdMob.feedAdBindProjection).not.toHaveBeenCalled();
     expect(mockAdMob.feedAdUpdateBounds).toHaveBeenCalled();
+    await feedAd.destroy();
     document.body.removeChild(el);
   });
 
@@ -74,8 +75,13 @@ describe('FeedAd bounds vs engine', () => {
       useWebViewNativeUiEngine: true,
     });
     await feedAd.attachTo(el);
-    expect(mockAdMob.feedAdBindProjection).toHaveBeenCalledOnce();
+    expect(mockAdMob.feedAdBindProjection).toHaveBeenCalledTimes(1);
+    expect(mockAdMob.feedAdBindProjection).toHaveBeenCalledWith({
+      id: 1,
+      projectionSelector: `#${el.id}`,
+    });
     expect(mockAdMob.feedAdUpdateBounds).not.toHaveBeenCalled();
+    await feedAd.destroy();
     document.body.removeChild(el);
   });
 });

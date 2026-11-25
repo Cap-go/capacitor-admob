@@ -330,7 +330,8 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
                 try FeedAdManager.shared.bindProjection(id: id, projectionSelector: projectionSelector)
                 call.resolve()
             } catch {
-                call.reject("Failed to bind feed ad projection: \(error.localizedDescription)")
+                let message = (error as? AdMobError)?.localizedDescription ?? error.localizedDescription
+                call.reject("Failed to bind feed ad projection: \(message)")
             }
         }
     }

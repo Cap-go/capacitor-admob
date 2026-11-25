@@ -8,6 +8,7 @@ ext {
     // Next Gen is currently published as a beta artifact; apps can override this property when pinning a newer vetted release.
     googleMobileAdsNextGenVersion = project.hasProperty('googleMobileAdsNextGenVersion') ? rootProject.ext.googleMobileAdsNextGenVersion : '0.25.0-beta01'
     userMessagingPlatformVersion = project.hasProperty('userMessagingPlatformVersion') ? rootProject.ext.userMessagingPlatformVersion : '4.0.0'
+    webViewNativeUiEngineVersion = project.hasProperty('webViewNativeUiEngineVersion') ? rootProject.ext.webViewNativeUiEngineVersion : '1.0.11'
 }
 
 buildscript {
@@ -71,5 +72,5 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation "com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:$googleMobileAdsNextGenVersion"
     implementation "com.google.android.ump:user-messaging-platform:$userMessagingPlatformVersion"
-    implementation 'io.github.webview-native-ui:engine:1.0.11'
+    implementation "io.github.webview-native-ui:engine:$webViewNativeUiEngineVersion"
 }

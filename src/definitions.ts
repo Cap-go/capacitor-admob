@@ -535,7 +535,7 @@ export interface AdMobPlusPlugin {
 
   /**
    * Bind a feed ad created with `useWebViewNativeUiEngine: true` to a DOM slot selector.
-   * Called by {@link FeedAd.attachTo}; apps rarely call this directly.
+   * Called by `FeedAd.attachTo()`; apps rarely call this directly.
    *
    * @param opts - Feed ad id and CSS selector for the placeholder element
    * @since 8.3.0

@@ -2,6 +2,6 @@ appId: app.capgo.admob
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: ".*Attached feed-slot.*"
+    visible: ".*CAPGO_CI_FEED_ENGINE_ENABLED.*"
     timeout: 120000
-- assertNotVisible: ".*\"useWebViewNativeUiEngine\": true.*"
+- assertNotVisible: ".*feed\\.loadfail.*"

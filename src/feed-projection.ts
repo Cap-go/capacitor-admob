@@ -2,7 +2,11 @@ const escapeSelectorId = (value: string): string => {
   if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
     return CSS.escape(value);
   }
-  return value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+  let escaped = value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
+  if (/^[0-9]/.test(escaped)) {
+    escaped = `\\3${escaped[0]} ${escaped.slice(1)}`;
+  }
+  return escaped;
 };
 
 /** Assign a stable CSS selector for WebView Native UI Engine DOM binding. */

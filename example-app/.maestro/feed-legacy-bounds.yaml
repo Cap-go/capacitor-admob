@@ -2,7 +2,7 @@ appId: app.capgo.admob
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "Feed events"
+    visible: ".*Feed events.*"
     timeout: 60000
 - runFlow:
     when:
@@ -12,5 +12,6 @@ appId: app.capgo.admob
       - tapOn:
           id: feedStartButton
 - extendedWaitUntil:
-    visible: ".*feed.load.*"
+    visible: ".*feed\\.load( |$).*"
     timeout: 120000
+- assertVisible: ".*\"useWebViewNativeUiEngine\": false.*"
