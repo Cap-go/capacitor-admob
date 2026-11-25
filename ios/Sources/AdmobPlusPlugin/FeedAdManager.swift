@@ -101,6 +101,7 @@ final class FeedAdManager {
                 "WebViewNativeUIEngine is not linked. Add CapgoCapacitorAdmob/Engine and the WebViewNativeUIEngine path pod to your Podfile."
             )
         }
+        throw AdMobError.unknown("useWebViewNativeUiEngine is disabled for this feed ad")
         #endif
     }
 

@@ -251,10 +251,8 @@ export type FeedAdCreateOptions = {
    * When `true`, native in-feed placement uses `@webview-native-ui/engine` scroll
    * tracking and DOM projection. Native views still receive slot geometry via
    * `feedAdUpdateBounds` from `FeedAd.attachTo()` (initial layout and scroll updates).
-   * Requires `FeedAd.attachTo()` on native platforms. CocoaPods opt-in: `pod
-   * 'CapgoCapacitorAdmob/Engine'`, `pod 'WebViewNativeUIEngine', :path =>
-   * '../../node_modules/@webview-native-ui/engine'` in the app target (outside
-   * `capacitor_pods`). Default `CapgoCapacitorAdmob/Core` needs no engine pods.
+   * Requires `FeedAd.attachTo()` on native platforms. CocoaPods: see README
+   * WebView Native UI Engine (`Core` default; `Engine` subspec + path pods).
    *
    * @default false
    * @since 8.3.0

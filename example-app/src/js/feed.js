@@ -250,13 +250,23 @@ if (ciFeedDemo && feedNativeUiEngine && Capacitor.isNativePlatform()) {
   window.setTimeout(() => {
     feedList.scrollTop = 400;
     window.setTimeout(() => {
-      logFeed('CAPGO_FEED_SCROLL_CHECK');
+      const slot = feedList.querySelector('.feed-ad-slot');
+      const rect = slot?.getBoundingClientRect();
+      const inView = rect ? rect.top > 0 && rect.bottom < window.innerHeight : false;
+      logFeed('CAPGO_FEED_SCROLL_CHECK', {
+        slotTop: rect?.top ?? null,
+        slotHeight: rect?.height ?? null,
+        slotInView: inView,
+      });
     }, 800);
   }, 12000);
 }
 
-if (ciFeedDemo && !ciFeedManual && Capacitor.isNativePlatform()) {
+if (ciFeedDemo && Capacitor.isNativePlatform()) {
   void SplashScreen.hide();
+}
+
+if (ciFeedDemo && !ciFeedManual && Capacitor.isNativePlatform()) {
   window.setTimeout(async () => {
     scrollFeedSectionIntoView();
     await new Promise((resolve) => window.setTimeout(resolve, 800));
