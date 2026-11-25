@@ -239,7 +239,6 @@ private final class FeedAdEntry: NSObject {
     }
 
     private func syncOverlayVisibility() {
-        guard useWebViewNativeUiEngine else { return }
         overlayContainer?.isHidden = !loaded
     }
 

@@ -13,10 +13,10 @@ VITE_CI_FEED=1 bun run build
 bunx cap sync android
 maestro test .maestro/feed-legacy-bounds.yaml
 maestro test .maestro/feed-legacy-no-start.yaml
-
-`feed-legacy-no-start.yaml` waits for CI auto-attach (`Attached feed-slot`), then taps destroy and checks the feed log.
 maestro test .maestro/feed-engine-legacy-marker.yaml
 ```
+
+`feed-legacy-no-start.yaml` waits for CI auto-attach (`Attached feed-slot`), then taps destroy and checks the feed log.
 
 WebView Native UI Engine:
 
