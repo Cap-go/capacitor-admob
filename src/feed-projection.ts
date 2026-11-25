@@ -7,7 +7,7 @@ const escapeSelectorId = (value: string): string => {
   }
   if (/^-[0-9]/.test(value)) {
     const rest = value.slice(2).replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
-    return `\\3${value[1]} ${rest}`;
+    return `-\\3${value[1]} ${rest}`;
   }
   let escaped = value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
   if (/^[0-9]/.test(escaped)) {

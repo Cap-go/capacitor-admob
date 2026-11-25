@@ -269,8 +269,8 @@ private class FeedAdEntry(
             val parent = webView.parent as? ViewGroup ?: return@post
             if (host.parent == null) {
                 parent.addView(host)
+                host.visibility = if (loaded) View.VISIBLE else View.INVISIBLE
             }
-            host.visibility = if (loaded) View.VISIBLE else View.INVISIBLE
             host.bringToFront()
         }
     }
