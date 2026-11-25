@@ -15,6 +15,8 @@ Pod::Spec.new do |s|
   s.dependency 'Capacitor'
   s.dependency 'Google-Mobile-Ads-SDK', '~> 13.1'
   s.dependency 'GoogleUserMessagingPlatform', '~> 3.1'
+  # Not on CocoaPods Trunk: app Podfile must add
+  # pod 'WebViewNativeUIEngine', :path => '.../node_modules/@webview-native-ui/engine'
   s.dependency 'WebViewNativeUIEngine', '1.0.11'
   s.swift_version = '5.1'
 end

@@ -258,7 +258,7 @@ private final class FeedAdEntry: NSObject {
     }
 
     func updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Bool) {
-        if useWebViewNativeUiEngine {
+        if useWebViewNativeUiEngine && engineProjection != nil {
             return
         }
         DispatchQueue.main.async {

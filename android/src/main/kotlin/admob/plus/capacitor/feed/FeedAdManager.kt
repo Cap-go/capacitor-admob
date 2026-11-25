@@ -50,6 +50,10 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
 
     fun hasEngineProjections(): Boolean = engineProjectionCount > 0
 
+    fun ensureEngineChannelInstalled() {
+        installEngineChannelIfNeeded()
+    }
+
     fun create(
         format: String,
         adUnitId: String,
@@ -289,7 +293,7 @@ private class FeedAdEntry(
     }
 
     fun updateBounds(x: Double, y: Double, width: Double, height: Double, visible: Boolean) {
-        if (useWebViewNativeUiEngine) {
+        if (useWebViewNativeUiEngine && engineProjection != null) {
             return
         }
         mainHandler.post {
