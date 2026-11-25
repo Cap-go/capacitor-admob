@@ -75,6 +75,8 @@ describe('FeedAd bounds vs engine', () => {
     } as DOMRect);
     window.dispatchEvent(new Event('scroll'));
     await vi.waitFor(() => expect(mockAdMob.feedAdUpdateBounds.mock.calls.length).toBeGreaterThan(1));
+    const legacyLast = mockAdMob.feedAdUpdateBounds.mock.calls.at(-1)?.[0];
+    expect(legacyLast).toMatchObject({ x: 15, y: 40 });
 
     await feedAd.destroy();
     document.body.removeChild(el);
@@ -106,6 +108,8 @@ describe('FeedAd bounds vs engine', () => {
     } as DOMRect);
     window.dispatchEvent(new Event('scroll'));
     await vi.waitFor(() => expect(mockAdMob.feedAdUpdateBounds.mock.calls.length).toBeGreaterThan(1));
+    const engineLast = mockAdMob.feedAdUpdateBounds.mock.calls.at(-1)?.[0];
+    expect(engineLast).toMatchObject({ x: 10, y: 55 });
 
     await feedAd.destroy();
     document.body.removeChild(el);

@@ -82,7 +82,7 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
             mainHandler = mainHandler,
         )
         autoRefreshMs?.let { entry.setAutoRefresh(it) }
-        if (useWebViewNativeUiEngine) {
+        if (shouldInstallEngineChannel(useWebViewNativeUiEngine)) {
             installEngineChannelIfNeeded()
         }
         entries[id] = entry
@@ -140,7 +140,9 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
             return "useWebViewNativeUiEngine is disabled for this feed ad"
         }
         val previousProjection = entry.engineProjection
-        installEngineChannelIfNeeded()
+        if (shouldInstallEngineChannel(entry.useWebViewNativeUiEngine)) {
+            installEngineChannelIfNeeded()
+        }
         entry.ensureAdHostInHierarchy()
         val error = entry.bindProjection(projectionSelector)
         if (error == null && entry.engineProjection !== previousProjection) {

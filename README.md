@@ -58,7 +58,7 @@ pod 'WebViewNativeUIEngine', :path => '../../node_modules/@webview-native-ui/eng
 
 Install `@webview-native-ui/engine@1.0.11` from npm. Place both pods in the app target in `Podfile` (outside `capacitor_pods`).
 
-Swift Package Manager apps pick up the engine through `Package.swift`.
+Swift Package Manager always resolves `@webview-native-ui/engine` at `1.0.11` through `Package.swift`, even when `useWebViewNativeUiEngine` is `false`; runtime projection remains opt-in via the flag. CocoaPods `Core` installs do not link the engine until you add the `Engine` subspec.
 
 ## Documentation
 

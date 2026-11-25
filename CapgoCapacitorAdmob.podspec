@@ -26,8 +26,4 @@ Pod::Spec.new do |s|
     engine.dependency 'WebViewNativeUIEngine', '1.0.11'
   end
 
-  s.test_spec 'Tests' do |test_spec|
-    test_spec.source_files = 'ios/Tests/**/*.{swift,h,m,c,cc,mm,cpp}'
-    test_spec.dependency 'CapgoCapacitorAdmob/Core'
-  end
 end

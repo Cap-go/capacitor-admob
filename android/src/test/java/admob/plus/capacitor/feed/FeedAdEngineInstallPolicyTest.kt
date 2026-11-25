@@ -16,4 +16,11 @@ class FeedAdEngineInstallPolicyTest {
         assertTrue(FeedAdManager.shouldInstallEngineChannel(true, false))
         assertFalse(FeedAdManager.shouldInstallEngineChannel(true, true))
     }
+
+    @Test
+    fun createAndBindUseSameInstallGate() {
+        assertFalse(FeedAdManager.shouldInstallEngineChannel(false, false))
+        assertTrue(FeedAdManager.shouldInstallEngineChannel(true, false))
+        assertFalse(FeedAdManager.shouldInstallEngineChannel(true, true))
+    }
 }

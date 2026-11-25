@@ -45,7 +45,7 @@ maestro test .maestro/feed-engine-scroll-placement.yaml
 Bind rejection (legacy feed ad, engine bind API):
 
 ```bash
-VITE_MAESTRO_BIND_REJECT=1 bun run build
+VITE_CI_FEED=1 VITE_MAESTRO_BIND_REJECT=1 bun run build
 bunx cap sync android
 bunx cap run android
 maestro test .maestro/feed-engine-bind-reject.yaml
