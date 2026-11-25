@@ -2,6 +2,9 @@ appId: app.capgo.admob
 ---
 - launchApp
 - assertVisible: ".*Feed events.*"
+- extendedWaitUntil:
+    visible: ".*Attached feed-slot.*"
+    timeout: 120000
 - tapOn:
     id: feedDestroyButton
 - assertVisible: ".*All feed ads destroyed.*"

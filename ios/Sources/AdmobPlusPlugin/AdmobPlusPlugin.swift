@@ -391,6 +391,11 @@ public class AdmobPlusPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     deinit {
-        FeedAdManager.shared.destroyAll()
+        let cleanup = { FeedAdManager.shared.destroyEntries(ownedBy: self) }
+        if Thread.isMainThread {
+            cleanup()
+        } else {
+            DispatchQueue.main.sync(execute: cleanup)
+        }
     }
 }

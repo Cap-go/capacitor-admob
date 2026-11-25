@@ -127,11 +127,11 @@ class FeedAdManager(private val plugin: AdMobPlusPlugin) {
         if (!entry.useWebViewNativeUiEngine) {
             return "useWebViewNativeUiEngine is disabled for this feed ad"
         }
-        val hadProjection = entry.engineProjection != null
+        val previousProjection = entry.engineProjection
         installEngineChannelIfNeeded()
         entry.ensureAdHostInHierarchy()
         val error = entry.bindProjection(projectionSelector)
-        if (error == null && !hadProjection) {
+        if (error == null && entry.engineProjection !== previousProjection) {
             engineProjectionCount += 1
         }
         return error
@@ -201,6 +201,7 @@ private class FeedAdEntry(
 
     fun destroy() {
         destroyed = true
+        finishLoad("Feed ad destroyed")
         releaseEngineProjection()
         mainHandler.removeCallbacksAndMessages(ciBannerSnapshotToken)
         refreshRunnable?.let { mainHandler.removeCallbacks(it) }

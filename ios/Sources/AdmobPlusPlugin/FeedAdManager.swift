@@ -60,6 +60,11 @@ final class FeedAdManager {
         entries.removeAll()
     }
 
+    func destroyEntries(ownedBy plugin: AdmobPlusPlugin) {
+        let ids = entries.compactMap { $0.value.plugin === plugin ? $0.key : nil }
+        ids.forEach { destroy(id: $0) }
+    }
+
     func load(id: Int, completion: @escaping (Error?) -> Void) {
         guard let entry = entries[id] else {
             completion(AdMobError.adNotFound)
@@ -233,6 +238,11 @@ private final class FeedAdEntry: NSObject {
         return true
     }
 
+    private func syncOverlayVisibility() {
+        guard useWebViewNativeUiEngine else { return }
+        overlayContainer?.isHidden = !loaded
+    }
+
     private func syncEngineHostAttached() {
         guard useWebViewNativeUiEngine else { return }
         DispatchQueue.main.async {
@@ -313,6 +323,7 @@ private final class FeedAdEntry: NSObject {
             }
         }
         loaded = false
+        syncOverlayVisibility()
         bannerView?.load(AdMobHelper.buildAdRequest())
     }
 
@@ -330,7 +341,7 @@ private final class FeedAdEntry: NSObject {
         container.addSubview(adView)
         nativeAdView = adView
         loaded = true
-        container.isHidden = false
+        syncOverlayVisibility()
         syncEngineHostAttached()
 
         let assets: [String: Any] = [
@@ -431,6 +442,7 @@ extension FeedAdEntry: AdLoaderDelegate {
     func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
         plugin?.notifyFeedFailure(Events.feedLoadFail, feedAdId: id, positionKey: positionKey, format: formatString, error: error)
         loaded = false
+        syncOverlayVisibility()
         finishLoad(error: error)
     }
 }
@@ -454,7 +466,7 @@ extension FeedAdEntry: NativeAdDelegate {
 extension FeedAdEntry: BannerViewDelegate {
     func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         loaded = true
-        overlayContainer?.isHidden = false
+        syncOverlayVisibility()
         syncEngineHostAttached()
         let assets: [String: Any] = [
             "width": bannerView.adSize.size.width,
@@ -467,6 +479,7 @@ extension FeedAdEntry: BannerViewDelegate {
     func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         plugin?.notifyFeedFailure(Events.feedLoadFail, feedAdId: id, positionKey: positionKey, format: formatString, error: error)
         loaded = false
+        syncOverlayVisibility()
         finishLoad(error: error)
     }
 
